@@ -6,7 +6,7 @@ A small, local Windows desktop to-do app: lists, tasks, one level of steps, plai
 
 For a Windows installer without setting up a local build environment, put the contents of this folder at a GitHub repository root. The included **Windows installer** workflow builds on Windows when pushed to `main` or `master`; it can also be started from **Actions → Windows installer → Run workflow**. Download **Clearlist-windows-installer** from the successful run, extract it, and run the setup executable. This route performs dependency installation and the required application build only. It follows [Tauri's GitHub build guidance](https://v2.tauri.app/distribute/pipelines/github/).
 
-The workflow has been prepared but has not yet been run. It requires a connected GitHub account and a repository with Actions enabled. The generated installer is unsigned.
+The Windows installer was built successfully on 18 September 2026. Download **Clearlist-windows-installer** from the successful **Actions → Windows installer** run, extract the ZIP, and run the setup executable. This artifact is retained until 2 October 2026; rerun the workflow to generate a fresh copy afterward. The generated installer is unsigned. The CI workflow uses faster release compilation settings and caches Rust dependencies.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 

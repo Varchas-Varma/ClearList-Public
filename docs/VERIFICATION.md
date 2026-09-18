@@ -1,8 +1,8 @@
 # Verification record
 
-Deployment update, 18 September 2026: added `.github/workflows/windows-installer.yml` to build the NSIS installer on a Windows runner. This workflow has not been executed; GitHub connection is still required. No additional application tests were run for this deployment-only change.
+Deployment update, 18 September 2026: the native Windows build and NSIS packaging succeeded in GitHub Actions. The installer is available as **Clearlist-windows-installer**. The build fixed the Tauri request-body import to `InvokeBody`; no additional application test suites were run during deployment. Interactive use on a Windows desktop remains unverified.
 
-Verified on 17 September 2026 in a Linux x86_64 workspace. This is a source delivery; no Windows executable or installer is included.
+The following record describes the earlier verification on 17 September 2026 in a Linux x86_64 workspace; the Windows build result above supersedes its native compilation limitation.
 
 ## Environment
 
