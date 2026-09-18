@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{
-    ipc::{IpcBody, Request, Response},
+    ipc::{InvokeBody, Request, Response},
     Manager, State,
 };
 struct Backend {
@@ -63,7 +63,7 @@ async fn add_attachment(
         .ok_or("Select a task before pasting an image.")?
         .to_owned();
     let bytes = match request.body() {
-        IpcBody::Raw(bytes) if bytes.len() <= clearlist_core::files::MAX_IMAGE_BYTES => {
+        InvokeBody::Raw(bytes) if bytes.len() <= clearlist_core::files::MAX_IMAGE_BYTES => {
             bytes.clone()
         }
         _ => return Err("Images must be at most 15 MiB.".into()),
