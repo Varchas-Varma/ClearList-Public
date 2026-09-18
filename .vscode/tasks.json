@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Desktop: develop",
+      "type": "shell",
+      "command": "npm run tauri dev",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Desktop: release",
+      "type": "shell",
+      "command": "npm run tauri build",
+      "problemMatcher": ["$rustc"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Frontend: test",
+      "type": "shell",
+      "command": "npm test",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Rust: test",
+      "type": "shell",
+      "command": "cargo test",
+      "problemMatcher": ["$rustc"],
+      "group": "test"
+    },
+    { "label": "Check project", "type": "shell", "command": "npm run check", "problemMatcher": [] }
+  ]
+}

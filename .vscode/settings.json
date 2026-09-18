@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" },
+  "[toml]": { "editor.formatOnSave": false },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "rust-analyzer.linkedProjects": ["Cargo.toml"],
+  "search.exclude": { "**/target": true, "**/dist": true, "**/node_modules": true },
+  "files.watcherExclude": { "**/target/**": true, "**/node_modules/**": true }
+}
