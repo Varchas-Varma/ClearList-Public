@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ListTodo, Plus, Search, X } from 'lucide-react';
+import { ListTodo, Plus, Search, X, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { usePreferences } from '../settings/preferences';
+import { runCommand } from '../settings/actions';
+import { useUi } from '../state/ui';
 import type { List } from '../domain';
 import { appStore, notes, useApp } from '../state/app';
 import { dragId, reorder, type DragItem } from '../dnd/actions';
@@ -17,9 +20,12 @@ function ListRow({ list, index, custom }: { list: List; index: number; custom: L
       (s) =>
         s.data.tasks.filter((t) => t.listId === list.id && !t.parentId && !t.isCompleted).length,
     );
-  const [editing, setEditing] = useState(false),
-    [deleting, setDeleting] = useState(false),
+  const editing = useUi((s) => s.editingListId === list.id),
+    deleting = useUi((s) => s.deletingListId === list.id),
     item: DragItem = { kind: 'list', id: list.id, label: list.name };
+  const setEditing = (value: boolean) => useUi.setState({ editingListId: value ? list.id : null });
+  const setDeleting = (value: boolean) =>
+    useUi.setState({ deletingListId: value ? list.id : null });
   const sort = useSortable({
       id: dragId('list', list.id),
       data: item,
@@ -36,6 +42,7 @@ function ListRow({ list, index, custom }: { list: List; index: number; custom: L
     >
       <div
         ref={drop.setNodeRef}
+        data-list-id={list.id}
         className={`list-row ${selected ? 'selected' : ''} ${drop.isOver || sort.isOver ? 'drop-target' : ''} ${sort.isDragging ? 'dragging' : ''}`}
       >
         {list.isDefault ? (
@@ -108,79 +115,131 @@ function ListRow({ list, index, custom }: { list: List; index: number; custom: L
   );
 }
 export function Sidebar() {
+  const collapsed = usePreferences((s) => s.sidebarCollapsed);
   const lists = useApp((s) => s.data.lists),
     search = useApp((s) => s.search),
     [adding, setAdding] = useState(false),
     custom = lists.filter((l) => !l.isDefault);
   return (
-    <aside className="sidebar" aria-label="Lists">
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} aria-label="Lists">
       <div className="brand">
-        <ListTodo size={21} />
-        <span>Clearlist</span>
-      </div>
-      <div className="search-field">
-        <Search size={16} aria-hidden="true" />
-        <input
-          id="search"
-          autoComplete="off"
-          type="search"
-          aria-label="Search all tasks"
-          placeholder="Search all tasks"
-          value={search}
-          onChange={(e) => appStore.getState().setSearch(e.target.value)}
-        />
-        {search && (
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Clear search"
-            onClick={() => appStore.getState().setSearch('')}
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
-      <nav className="list-nav" aria-label="Task lists">
-        {lists
-          .filter((l) => l.isDefault)
-          .map((list) => (
-            <ListRow key={list.id} list={list} index={0} custom={custom} />
-          ))}
-        {custom.length > 0 && <div className="sidebar-divider" />}
-        <SortableContext
-          items={custom.map((l) => dragId('list', l.id))}
-          strategy={verticalListSortingStrategy}
-        >
-          {custom.map((list, index) => (
-            <ListRow key={list.id} list={list} index={index} custom={custom} />
-          ))}
-        </SortableContext>
-      </nav>
-      <div className="sidebar-bottom">
-        {adding && (
-          <AddField
-            label="List name"
-            autoFocus
-            onCancel={() => setAdding(false)}
-            onAdd={async (name) => {
-              const id = crypto.randomUUID(),
-                ok = await appStore.getState().mutate({ kind: 'createList', id, name });
-              if (ok) {
-                appStore.getState().selectList(id);
-                setAdding(false);
-              }
-              return ok;
-            }}
-          />
+        {!collapsed && (
+          <>
+            <ListTodo size={21} />
+            <span>Clearlist</span>
+          </>
         )}
         <button
           type="button"
-          id="new-list"
-          className="new-list-button"
-          onClick={() => setAdding(true)}
+          className="icon-button sidebar-toggle"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          aria-controls="sidebar-content"
+          onClick={() => usePreferences.getState().toggleSidebar()}
         >
-          <Plus size={18} />
-          New list
+          {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+        </button>
+      </div>
+      {collapsed && (
+        <div className="sidebar-rail">
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Jump to task search"
+            title="Search"
+            onClick={() => runCommand('search')}
+          >
+            <Search size={18} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Jump to New list"
+            title="New list"
+            onClick={() => runCommand('newList')}
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+      )}
+      <div id="sidebar-content" className="sidebar-content" hidden={collapsed}>
+        <div className="search-field">
+          <Search size={16} aria-hidden="true" />
+          <input
+            id="search"
+            autoComplete="off"
+            type="search"
+            aria-label="Search all tasks"
+            placeholder="Search all tasks"
+            value={search}
+            onChange={(e) => appStore.getState().setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Clear search"
+              onClick={() => appStore.getState().setSearch('')}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <nav className="list-nav" aria-label="Task lists">
+          {lists
+            .filter((l) => l.isDefault)
+            .map((list) => (
+              <ListRow key={list.id} list={list} index={0} custom={custom} />
+            ))}
+          {custom.length > 0 && <div className="sidebar-divider" />}
+          <SortableContext
+            items={custom.map((l) => dragId('list', l.id))}
+            strategy={verticalListSortingStrategy}
+          >
+            {custom.map((list, index) => (
+              <ListRow key={list.id} list={list} index={index} custom={custom} />
+            ))}
+          </SortableContext>
+        </nav>
+      </div>
+      <div className="sidebar-bottom">
+        <div hidden={collapsed}>
+          {adding && (
+            <AddField
+              label="List name"
+              autoFocus
+              onCancel={() => setAdding(false)}
+              onAdd={async (name) => {
+                const id = crypto.randomUUID(),
+                  ok = await appStore.getState().mutate({ kind: 'createList', id, name });
+                if (ok) {
+                  appStore.getState().selectList(id);
+                  setAdding(false);
+                }
+                return ok;
+              }}
+            />
+          )}
+          <button
+            type="button"
+            id="new-list"
+            className="new-list-button"
+            onClick={() => setAdding(true)}
+          >
+            <Plus size={18} />
+            New list
+          </button>
+        </div>
+        <button
+          type="button"
+          className="settings-button"
+          aria-label="Settings"
+          title="Settings"
+          onClick={() => useUi.getState().openSettings()}
+        >
+          <Settings size={18} />
+          {!collapsed && <span>Settings</span>}
         </button>
       </div>
     </aside>

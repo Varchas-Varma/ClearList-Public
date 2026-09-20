@@ -1,12 +1,12 @@
-# Clearlist
+# Clearlist 0.1.2
 
 A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. No accounts, cloud services, calendars, reminders, telemetry or automatic updater. The layout follows familiar list-management conventions with original styling and icons.
 
 ## Quick start
 
-Download **Clearlist-0.1.1-windows-installer** from the latest successful **Actions → Windows installer** run in this repository, extract the ZIP, close Clearlist, and run `Clearlist_0.1.1_x64-setup.exe`. Install over 0.1.0 to retain your existing lists, notes, and images. Old steps become subtasks automatically on first launch.
+Download **Clearlist-0.1.2-windows-installer** from the latest successful **Actions → Windows installer** run in this repository, extract the ZIP, close Clearlist, and run `Clearlist_0.1.2_x64-setup.exe`. Install over 0.1.0 or 0.1.1 to retain your existing lists, notes, and images. Old steps become subtasks automatically on first launch.
 
-Version 0.1.1 adds visible, nested subtasks; drag tasks onto tasks to nest them or into gaps to reorder/promote them. The keyboard follows the same model. Task inputs disable saved-entry suggestions. The installer remains unsigned. Builds run the required frontend/native compilation plus focused upgrade and hierarchy checks; Rust dependencies are cached.
+Version 0.1.2 adds a Settings panel, reassignable shortcuts, three full colour wheels with hex input, and a collapsible sidebar. It keeps the visible, nested subtasks from 0.1.1; drag tasks onto tasks to nest them or into gaps to reorder/promote them. The keyboard follows the same model. Task inputs disable saved-entry suggestions. The installer remains unsigned. Builds run the required frontend/native compilation plus focused upgrade and hierarchy checks; Rust dependencies are cached.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 
@@ -118,7 +118,7 @@ VS Code Terminal → Run Task exposes development, release, and test commands. C
 Because this is a Cargo workspace, artifacts are written to the root **target** directory:
 
 - Executable: `target\release\clearlist.exe`
-- x64 installer: `target\release\bundle\nsis\Clearlist_0.1.1_x64-setup.exe`
+- x64 installer: `target\release\bundle\nsis\Clearlist_0.1.2_x64-setup.exe`
 
 The architecture suffix changes for a different target. An explicit `--target` adds the target triple under `target`; Tauri prints exact paths at the end. `src-tauri/tauri.windows.conf.json` automatically selects NSIS and `currentUser` installation. The installer handles a missing WebView2 runtime. Builds are unsigned because no signing certificate is configured.
 
@@ -138,7 +138,29 @@ The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `inde
 - **Preview and deletion:** Click a thumbnail for a larger in-app preview. Missing files show Image unavailable with Retry. Image, task, and list deletion require confirmation; task/list confirmation explains dependent data removal.
 - **Search:** Case-insensitive matching across task titles, steps and notes in all lists, with the originating list shown. No advanced filters or query syntax.
 
-### Shortcuts
+### Settings and colours (0.1.2)
+
+Open **Settings** using the gear at the bottom of the sidebar. It stays available when the sidebar is collapsed.
+
+- **Main colour:** task-list background and primary surfaces.
+- **Side colour:** sidebar and task-details background.
+- **Complement colour:** highlights, buttons, and accents.
+
+Each control has a complete hue/saturation wheel, keyboard-accessible hue/saturation/brightness sliders, and a hex field accepting `#RGB` or `#RRGGBB` (the `#` is optional). Press Enter or leave the field to apply a hex value. Invalid values show an error and retain the previous colour. Changes preview immediately and save automatically; text and border colours are derived for readability. **Reset colours to system theme** restores automatic light/dark colours.
+
+Click the sidebar's collapse/expand button to switch between the full sidebar and a compact rail. The rail keeps search, New list, and Settings available. Search and new-list shortcuts automatically expand the sidebar. The collapsed state persists between launches.
+
+### Reassigning hotkeys (0.1.2)
+
+Open **Settings → Hotkeys**, find an action, click its current shortcut or **Unassigned**, and press the desired key combination. **Clear** removes an assignment. **Reset hotkeys** restores the defaults below. Conflicting assignments are rejected and identify the existing action; clear that action first to reuse the combination. Escape cancels recording and Tab leaves it.
+
+All 46 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
+
+The task footer and task-action menus display your current bindings. Task/list actions operate on the focused task or current task/list. Protected default-list actions remain unavailable. Reassigning an existing shortcut removes its old binding; Escape remains available as a cancel key.
+
+Preferences save locally in the app's WebView storage, separate from the task database, and survive normal restarts and in-place updates using the same app identity. A manual copy of only `clearlist.db` does not include these preferences. This release does not change the task database schema.
+
+### Default shortcuts
 
 | Shortcut              | Action                                                                           |
 | --------------------- | -------------------------------------------------------------------------------- |
@@ -235,3 +257,7 @@ Select compatible versions using `npm install package-name@version` or `npm inst
 - Linux native build: Tauri requires WebKitGTK 4.1 and other Linux development packages. `cargo test` for the core and frontend checks do not require a desktop WebView.
 
 See `docs/VERIFICATION.md` for actual command results and remaining native Windows checks. This project uses the MIT license; dependencies retain their own licenses.
+
+## Release maintenance
+
+Update this README with every release: current version and installer name, changed features, settings, shortcut defaults, upgrade instructions, and actual verification results. Keep package, Cargo, Tauri, lockfile, and workflow artifact versions synchronized.

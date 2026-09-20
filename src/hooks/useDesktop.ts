@@ -2,8 +2,11 @@ import { useEffect } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { appStore, notes } from '../state/app';
-import { useTreeUi } from '../state/treeUi';
-import { useUi } from '../state/ui';
+import { focusTarget, useTreeUi } from '../state/treeUi';
+import { commandFor, commands } from '../settings/shortcuts';
+import { usePreferences } from '../settings/preferences';
+import { runCommand, revealTask } from '../settings/actions';
+import { children } from '../tree';
 import { clipboardImages, validateClipboardImage } from '../services/clipboard';
 export function editable(target: EventTarget | null): boolean {
   return (
@@ -20,38 +23,71 @@ export function useDesktop() {
         document.querySelector('[role="menu"]')
       )
         return;
-      const control = e.ctrlKey || e.metaKey;
-      if (control && !e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        useTreeUi.getState().setMoving(null);
-        document.getElementById('search')?.focus();
-        return;
-      }
-      if (control && !e.altKey && e.key.toLowerCase() === 'n') {
-        e.preventDefault();
-        useTreeUi.getState().setMoving(null);
-        if (e.shiftKey) document.getElementById('new-list')?.click();
-        else {
-          appStore.getState().setSearch('');
-          requestAnimationFrame(() => document.getElementById('new-task')?.focus());
-        }
-        return;
-      }
-      if (e.key === 'Escape') {
-        if (editable(e.target)) {
-          (e.target as HTMLElement).blur();
-          return;
-        }
-        appStore.getState().selectTask(null);
-      }
-      if (e.key === 'Delete' && !editable(e.target)) {
+      const command = commandFor(e, usePreferences.getState().hotkeys);
+      const element = e.target instanceof Element ? e.target : null;
+      const typing = editable(e.target);
+      if (
+        command &&
+        ['previousItem', 'nextItem'].includes(command) &&
+        typing &&
+        element?.closest('#task-detail') &&
+        element.tagName === 'INPUT' &&
+        (element.id === 'new-subtask' || element.closest('.inline-editor')) &&
+        (!e.key || e.key.startsWith('Arrow') || e.ctrlKey || e.altKey)
+      ) {
         const id = appStore.getState().selectedTaskId;
         if (id) {
           e.preventDefault();
-          useUi.getState().requestDelete(id);
+          const rows = children(appStore.getState().data.tasks, id);
+          const next =
+            element.id === 'new-subtask'
+              ? (rows[command === 'previousItem' ? rows.length - 1 : 0]?.id ?? id)
+              : id;
+          (element as HTMLElement).blur();
+          revealTask(next);
+          focusTarget({ kind: 'row', id: next });
         }
+        return;
       }
+      if ((command === 'cancel' && !typing) || e.key === 'Escape') {
+        if (typing) {
+          (e.target as HTMLElement).blur();
+          return;
+        }
+        e.preventDefault();
+        const source = useTreeUi.getState().movingId;
+        useTreeUi.getState().setMoving(null);
+        if (source) focusTarget({ kind: 'row', id: source });
+        else {
+          appStore.getState().selectTask(null);
+          runCommand('newTask');
+        }
+        return;
+      }
+      const definition = commands.find((c) => c.id === command);
+      if (!command || !definition || definition.scope === 'navigation') return;
+      if (
+        typing &&
+        (definition.scope !== 'global' ||
+          !(e.ctrlKey || e.altKey || e.metaKey || /^F\d{1,2}$/.test(e.key)))
+      )
+        return;
+      if (definition.scope === 'task' && element?.closest('.sidebar')) return;
+      if (
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        ['Enter', ' '].includes(e.key) &&
+        element?.closest('button,input')
+      )
+        return;
+      if (e.repeat && !['moveTaskUp', 'moveTaskDown', 'previousList', 'nextList'].includes(command))
+        return;
+      e.preventDefault();
+      const row = element?.closest<HTMLElement>('[data-task-id]')?.dataset.taskId;
+      runCommand(command, useTreeUi.getState().movingId ?? row, element);
     }
+
     function paste(e: ClipboardEvent) {
       const id = appStore.getState().selectedTaskId;
       if (!id || !e.clipboardData || document.querySelector('dialog[open]')) return;

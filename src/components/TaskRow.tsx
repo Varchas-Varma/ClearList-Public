@@ -6,6 +6,8 @@ import { Handle } from '../dnd/Handle';
 import { appStore, notes, useApp } from '../state/app';
 import { useUi } from '../state/ui';
 import { focusTarget, useTreeUi } from '../state/treeUi';
+import { usePreferences } from '../settings/preferences';
+import { keyLabel, type CommandId } from '../settings/shortcuts';
 import { ActionMenu } from './ActionMenu';
 import { EditableText } from './EditableText';
 export function TaskRow({
@@ -23,6 +25,9 @@ export function TaskRow({
   stepCount?: number;
   doneSteps?: number;
 }) {
+  const hotkeys = usePreferences((s) => s.hotkeys);
+  const label = (text: string, id: CommandId) =>
+    hotkeys[id] ? `${text} (${keyLabel(hotkeys[id])})` : text;
   const selected = useApp((s) => s.selectedTaskId === task.id);
   const listName = useApp((s) => s.data.lists.find((l) => l.id === task.listId)?.name);
   const editing = useTreeUi((s) => s.editingId === task.id);
@@ -133,9 +138,9 @@ export function TaskRow({
       <ActionMenu
         label={`Actions for task ${task.title}`}
         actions={[
-          { label: 'Rename (F2)', run: () => setEditing(true) },
+          { label: label('Rename', 'renameTask'), run: () => setEditing(true) },
           {
-            label: 'Add subtask (Insert)',
+            label: label('Add subtask', 'newSubtask'),
             run: () => {
               appStore.getState().selectTask(task.id);
               requestAnimationFrame(() => document.getElementById('new-subtask')?.focus());
@@ -147,15 +152,13 @@ export function TaskRow({
                 {
                   label: 'Make top-level task',
                   run: () => {
-                    void appStore
-                      .getState()
-                      .mutate({
-                        kind: 'placeTask',
-                        id: task.id,
-                        listId: task.listId,
-                        parentId: null,
-                        beforeId: null,
-                      });
+                    void appStore.getState().mutate({
+                      kind: 'placeTask',
+                      id: task.id,
+                      listId: task.listId,
+                      parentId: null,
+                      beforeId: null,
+                    });
                   },
                 },
               ]
@@ -171,7 +174,7 @@ export function TaskRow({
             run: () => reorder(item, siblings[index + 1].id),
           },
           {
-            label: 'Duplicate (Ctrl+D)',
+            label: label('Duplicate', 'duplicateTask'),
             run: () => {
               void (async () => {
                 if (!(await notes.flushAll())) return;
@@ -182,7 +185,7 @@ export function TaskRow({
             },
           },
           {
-            label: 'Delete task… (Delete)',
+            label: label('Delete task…', 'deleteTask'),
             danger: true,
             run: () => useUi.getState().requestDelete(task.id),
           },

@@ -1,4 +1,4 @@
-import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Fragment, useDeferredValue, useEffect, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { searchTasks, taskOrder, type Task } from '../domain';
@@ -7,6 +7,9 @@ import { appStore, useApp } from '../state/app';
 import { useTreeUi } from '../state/treeUi';
 import { useTaskNavigation } from '../hooks/useTaskNavigation';
 import { canPlace, targetKey, type Place } from '../tree';
+import { usePreferences } from '../settings/preferences';
+import { keyLabel } from '../settings/shortcuts';
+import { useUi } from '../state/ui';
 import { AddField } from './AddField';
 import { TaskRow } from './TaskRow';
 function Gap({ place }: { place: Place }) {
@@ -109,7 +112,9 @@ export function TaskPanel() {
     selectedListId = useApp((s) => s.selectedListId),
     query = useApp((s) => s.search),
     search = useDeferredValue(query);
-  const [completedOpen, setCompletedOpen] = useState(true);
+  const completedOpen = useTreeUi((s) => s.completedOpen);
+  const setCompletedOpen = (completedOpen: boolean) => useTreeUi.setState({ completedOpen });
+  const hotkeys = usePreferences((s) => s.hotkeys);
   const movingId = useTreeUi((s) => s.movingId ?? s.draggingId),
     target = useTreeUi((s) => s.target);
   const results = useMemo(() => searchTasks(data, search), [data, search]);
@@ -213,8 +218,8 @@ export function TaskPanel() {
         <div className="task-entry">
           <p id="task-keyboard-help" className="keyboard-hint" role="status">
             {moving
-              ? `Moving “${moving.title}” · ${targetTask ? `Enter: subtask of “${targetTask.title}” · Right: choose position` : 'Enter: drop here'} · ↑↓: position · ←: parent level · Esc: cancel`
-              : '↑↓ Browse · Enter Move · ←→ Subtasks · F2 Rename · Space Complete · Delete Remove'}
+              ? `Moving “${moving.title}” · ${keyLabel(hotkeys.pickMove)}: ${targetTask ? `subtask of “${targetTask.title}”` : 'drop here'} · ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)}: position · ${keyLabel(hotkeys.enterSubtasks)}: subtasks · ${keyLabel(hotkeys.leaveSubtasks)}: parent · ${keyLabel(hotkeys.cancel)}: cancel`
+              : ` ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)} Browse · ${keyLabel(hotkeys.pickMove)} Move · ${keyLabel(hotkeys.renameTask)} Rename · ${keyLabel(hotkeys.newTask)} Add task`}
           </p>
           <AddField
             key={list.id}
@@ -226,17 +231,13 @@ export function TaskPanel() {
                 .mutate({ kind: 'createTask', id: crypto.randomUUID(), listId: list.id, title })
             }
           />
-          <details className="keyboard-help">
-            <summary>Keyboard shortcuts</summary>
-            <p>
-              ↑ / ↓: browse siblings. →: enter subtasks. ←: parent task. Enter: pick up / drop.
-              While moving, arrows visit gaps and tasks; Enter on a task makes a subtask, → lets you
-              choose its position. Esc: cancel. Home / End: first / last. F2: rename. Delete:
-              remove. Space: complete. Insert: add subtask. Ctrl+Enter: open details. Ctrl+D:
-              duplicate. Ctrl+N: new task. Ctrl+Shift+N: new list. Ctrl+F: search. Tab / Shift+Tab:
-              next / previous control.
-            </p>
-          </details>
+          <button
+            type="button"
+            className="text-button keyboard-help"
+            onClick={() => useUi.getState().openSettings('hotkeys')}
+          >
+            Keyboard shortcuts
+          </button>
         </div>
       )}
     </main>

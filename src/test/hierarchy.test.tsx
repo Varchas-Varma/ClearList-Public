@@ -7,6 +7,7 @@ import { appStore, notes } from '../state/app';
 import { useUi } from '../state/ui';
 import { fixture } from './fixtures';
 import App from '../App';
+import { defaultPreferences, usePreferences } from '../settings/preferences';
 import { useTreeUi } from '../state/treeUi';
 const native = vi.hoisted(() => ({
   close: null as null | ((event: { preventDefault(): void }) => Promise<void>),
@@ -28,14 +29,16 @@ vi.mock('@tauri-apps/api/window', () => ({
 beforeEach(async () => {
   await appStore.getState().drain();
   vi.clearAllMocks();
+  usePreferences.setState({ ...defaultPreferences(), saveError: null });
   Object.keys(notes.store.getState().drafts).forEach(notes.discard);
-  useUi.setState({ deleteTaskId: null, moveTaskId: null });
+  useUi.setState({ deleteTaskId: null, moveTaskId: null, settingsOpen: false });
   useTreeUi.setState({
     movingId: null,
     draggingId: null,
     target: null,
     editingId: null,
     collapsed: {},
+    completedOpen: true,
   });
   let data = fixture();
   vi.mocked(repository.load).mockImplementation(async () => structuredClone(data));

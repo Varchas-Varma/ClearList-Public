@@ -68,12 +68,6 @@ export function EditableText({
           if (editOnClick) setEditing(true);
         }}
         onDoubleClick={() => setEditing(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'F2') {
-            e.preventDefault();
-            setEditing(true);
-          }
-        }}
       >
         {value}
       </button>

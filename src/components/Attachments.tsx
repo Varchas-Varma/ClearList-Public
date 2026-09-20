@@ -31,7 +31,7 @@ function AttachmentTile({ attachment }: { attachment: Attachment }) {
     };
   }, [attachment.id, attachment.mimeType, attempt]);
   return (
-    <div className="attachment-tile">
+    <div className="attachment-tile" data-attachment-id={attachment.id}>
       {failed ? (
         <div className="missing-image">
           <ImageOff size={22} />
@@ -66,6 +66,7 @@ function AttachmentTile({ attachment }: { attachment: Attachment }) {
           type="button"
           className="icon-button"
           aria-label={`Delete ${attachment.fileName}`}
+          data-delete-image="true"
           onClick={() => setDeleting(true)}
         >
           <Trash2 size={15} />
@@ -93,7 +94,12 @@ export function Attachments({ taskId }: { taskId: string }) {
   const all = useApp((s) => s.data.attachments),
     images = all.filter((a) => a.taskId === taskId);
   return (
-    <section className="detail-section" aria-labelledby="images-heading">
+    <section
+      id="task-images"
+      tabIndex={-1}
+      className="detail-section"
+      aria-labelledby="images-heading"
+    >
       <h3 id="images-heading">Images</h3>
       <p className="paste-hint">
         Paste an image here with Ctrl+V.

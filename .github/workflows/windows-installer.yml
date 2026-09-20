@@ -48,7 +48,7 @@ jobs:
       - name: Make installer available for download
         uses: actions/upload-artifact@v7
         with:
-          name: Clearlist-0.1.1-windows-installer
+          name: Clearlist-0.1.2-windows-installer
           path: target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
           retention-days: 14

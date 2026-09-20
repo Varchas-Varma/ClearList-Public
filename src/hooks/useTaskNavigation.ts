@@ -1,7 +1,9 @@
 import type { KeyboardEvent } from 'react';
-import { appStore, notes } from '../state/app';
+import { appStore } from '../state/app';
 import { focusTarget, useTreeUi } from '../state/treeUi';
-import { useUi } from '../state/ui';
+import { commandFor, commands } from '../settings/shortcuts';
+import { runCommand } from '../settings/actions';
+import { usePreferences } from '../settings/preferences';
 import { children, moveTargets, siblings, targetKey, type Target } from '../tree';
 export function useTaskNavigation(search: boolean) {
   return function keyboard(e: KeyboardEvent<HTMLElement>) {
@@ -12,7 +14,35 @@ export function useTaskNavigation(search: boolean) {
       e.target.closest('[role="menu"],dialog')
     )
       return;
-    const control = e.ctrlKey || e.metaKey;
+    const command = commandFor(e, usePreferences.getState().hotkeys);
+    const sourceElement = e.target;
+    const row = sourceElement.closest<HTMLElement>('[data-task-id]')?.dataset.taskId;
+    if (
+      command &&
+      commands.find((c) => c.id === command)?.scope === 'task' &&
+      (row || sourceElement.closest('[data-gap]')) &&
+      !sourceElement.closest('input,textarea,select,[contenteditable="true"]') &&
+      (!sourceElement.closest('button') || sourceElement.closest('.editable-text,.drag-handle'))
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.repeat || ['moveTaskUp', 'moveTaskDown'].includes(command))
+        runCommand(command, useTreeUi.getState().movingId ?? row, sourceElement);
+      return;
+    }
+    const navigation: Record<string, string> = {
+      previousItem: 'ArrowUp',
+      nextItem: 'ArrowDown',
+      firstItem: 'Home',
+      lastItem: 'End',
+      enterSubtasks: 'ArrowRight',
+      leaveSubtasks: 'ArrowLeft',
+      pickMove: 'Enter',
+      cancel: 'Escape',
+    };
+    const key = command ? navigation[command] : undefined;
+    if (e.key === 'Tab') useTreeUi.getState().setMoving(null);
+    if (!key) return;
     const element = e.target;
     const input = element.closest(
       'input:not([type="checkbox"]),textarea,select,[contenteditable="true"]',
@@ -23,7 +53,7 @@ export function useTaskNavigation(search: boolean) {
     const ui = useTreeUi.getState();
     const task = data.tasks.find((t) => t.id === rowId);
     const source = data.tasks.find((t) => t.id === ui.movingId);
-    const arrow = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+    const arrow = key === 'ArrowUp' || key === 'ArrowDown';
     const entry = element.id === 'new-task';
     function handled() {
       e.preventDefault();
@@ -34,12 +64,17 @@ export function useTaskNavigation(search: boolean) {
       focusTarget(target);
     }
     if (input) {
-      if (!arrow || control || e.altKey || e.shiftKey || (!entry && !rowId)) return;
+      if (
+        !arrow ||
+        (!entry && !rowId) ||
+        (!(e.ctrlKey || e.altKey || e.metaKey) && !['ArrowUp', 'ArrowDown'].includes(e.key))
+      )
+        return;
       handled();
       const rows = siblings(data.tasks, selectedListId!, task?.parentId ?? null);
       const index = task
-        ? rows.findIndex((t) => t.id === task.id) + (e.key === 'ArrowUp' ? -1 : 1)
-        : e.key === 'ArrowUp'
+        ? rows.findIndex((t) => t.id === task.id) + (key === 'ArrowUp' ? -1 : 1)
+        : key === 'ArrowUp'
           ? rows.length - 1
           : 0;
       if (rows.length) {
@@ -52,8 +87,8 @@ export function useTaskNavigation(search: boolean) {
     // Buttons and checkboxes keep their standard activation; the title and handle operate the row.
     const auxiliary =
       element.closest('button,input') && !element.closest('.editable-text,.drag-handle');
-    if (auxiliary && !arrow && !['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
-    if (e.key === 'Escape') {
+    if (auxiliary && !arrow && !['ArrowLeft', 'ArrowRight', 'Escape'].includes(key)) return;
+    if (key === 'Escape') {
       handled();
       if (source) {
         useTreeUi.getState().setMoving(null);
@@ -69,31 +104,30 @@ export function useTaskNavigation(search: boolean) {
         useTreeUi.getState().setMoving(null);
         return;
       }
-      if (control || e.altKey || e.shiftKey) return;
       const target = ui.target;
       if (!target) return;
       const hovered =
         target.kind === 'row' ? data.tasks.find((t) => t.id === target.id) : undefined;
       const scope = target.kind === 'gap' ? target.parentId : (hovered?.parentId ?? null);
-      if (arrow || e.key === 'Home' || e.key === 'End') {
+      if (arrow || key === 'Home' || key === 'End') {
         handled();
         const targets = moveTargets(data.tasks, source, scope);
         const index = targets.findIndex((t) => targetKey(t) === targetKey(target));
         const next =
-          e.key === 'Home'
+          key === 'Home'
             ? 0
-            : e.key === 'End'
+            : key === 'End'
               ? targets.length - 1
-              : Math.max(0, Math.min(targets.length - 1, index + (e.key === 'ArrowUp' ? -1 : 1)));
+              : Math.max(0, Math.min(targets.length - 1, index + (key === 'ArrowUp' ? -1 : 1)));
         focus(targets[next]);
-      } else if (e.key === 'ArrowRight' && hovered) {
+      } else if (key === 'ArrowRight' && hovered) {
         handled();
         useTreeUi.getState().expand(hovered.id);
         focus(moveTargets(data.tasks, source, hovered.id)[0]);
-      } else if (e.key === 'ArrowLeft' && scope) {
+      } else if (key === 'ArrowLeft' && scope) {
         handled();
         focus({ kind: 'row', id: scope });
-      } else if (e.key === 'Enter') {
+      } else if (key === 'Enter') {
         handled();
         const parentId = target.kind === 'row' ? target.id : target.parentId;
         if (parentId) useTreeUi.getState().expand(parentId);
@@ -111,51 +145,32 @@ export function useTaskNavigation(search: boolean) {
       return;
     }
     if (!task) return;
-    if (e.key === 'Enter' && control) {
-      handled();
-      appStore.getState().selectTask(task.id);
-      requestAnimationFrame(() => document.getElementById('task-detail')?.focus());
-      return;
-    }
-    if (control && e.key.toLowerCase() === 'd') {
-      handled();
-      void (async () => {
-        if (!(await notes.flushAll())) return;
-        const newId = crypto.randomUUID();
-        if (await mutate({ kind: 'duplicateTask', id: task.id, newId })) {
-          appStore.getState().selectTask(newId);
-          focus({ kind: 'row', id: newId });
-        }
-      })();
-      return;
-    }
-    if (control || e.altKey || e.shiftKey) return;
     const rows = search
       ? Array.from(document.querySelectorAll<HTMLElement>('.task-panel [data-task-id]'))
           .map((n) => data.tasks.find((t) => t.id === n.dataset.taskId)!)
           .filter(Boolean)
       : siblings(data.tasks, task.listId, task.parentId);
-    if (arrow || e.key === 'Home' || e.key === 'End') {
+    if (arrow || key === 'Home' || key === 'End') {
       handled();
       const index = rows.findIndex((t) => t.id === task.id);
       const next =
-        e.key === 'Home'
+        key === 'Home'
           ? 0
-          : e.key === 'End'
+          : key === 'End'
             ? rows.length - 1
-            : Math.max(0, Math.min(rows.length - 1, index + (e.key === 'ArrowUp' ? -1 : 1)));
+            : Math.max(0, Math.min(rows.length - 1, index + (key === 'ArrowUp' ? -1 : 1)));
       if (rows[next]) focus({ kind: 'row', id: rows[next].id });
-    } else if (e.key === 'ArrowRight') {
+    } else if (key === 'ArrowRight') {
       handled();
       useTreeUi.getState().expand(task.id);
       const child = children(data.tasks, task.id)[0];
       if (child && !search) focus({ kind: 'row', id: child.id });
-    } else if (e.key === 'ArrowLeft') {
+    } else if (key === 'ArrowLeft') {
       handled();
       if (task.parentId && !search) focus({ kind: 'row', id: task.parentId });
       else if (children(data.tasks, task.id).length)
         useTreeUi.setState({ collapsed: { ...ui.collapsed, [task.id]: true } });
-    } else if (e.key === 'Enter') {
+    } else if (key === 'Enter') {
       handled();
       if (search) {
         appStore.getState().selectTask(task.id);
@@ -172,21 +187,6 @@ export function useTaskNavigation(search: boolean) {
       };
       useTreeUi.getState().setMoving(task.id, target);
       focusTarget(target);
-    } else if (e.key === 'F2') {
-      handled();
-      useTreeUi.getState().setEditing(task.id);
-    } else if (e.key === 'Delete') {
-      handled();
-      useUi.getState().requestDelete(task.id);
-    } else if (e.key === ' ') {
-      handled();
-      void mutate({ kind: 'completeTask', id: task.id, completed: !task.isCompleted }).then(() =>
-        focus({ kind: 'row', id: task.id }),
-      );
-    } else if (e.key === 'Insert') {
-      handled();
-      appStore.getState().selectTask(task.id);
-      requestAnimationFrame(() => document.getElementById('new-subtask')?.focus());
     }
   };
 }

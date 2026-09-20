@@ -6,6 +6,7 @@ export const useTreeUi = create<{
   target: Target | null;
   editingId: string | null;
   collapsed: Record<string, boolean>;
+  completedOpen: boolean;
   setMoving(id: string | null, target?: Target | null): void;
   setTarget(target: Target): void;
   setEditing(id: string | null): void;
@@ -17,6 +18,7 @@ export const useTreeUi = create<{
   target: null,
   editingId: null,
   collapsed: {},
+  completedOpen: true,
   setMoving: (movingId, target = null) => set({ movingId, target }),
   setTarget: (target) => set({ target }),
   setEditing: (editingId) => set({ editingId }),

@@ -1,5 +1,9 @@
 # Verification record
 
+## 0.1.2 — 20 September 2026
+
+The production frontend build passes. Six focused React checks pass: hotkey reassignment and persistence, conflict rejection and typing protection, all three colour controls and hex validation, sidebar collapse with search/new-list focus, and the two existing keyboard hierarchy scenarios. The Windows workflow compiles and packages the native app and retains the four existing database-upgrade/hierarchy checks. Its actual release result is available in GitHub Actions. No task database migration was added for 0.1.2. Interactive Windows desktop use has not been manually verified.
+
 ## 0.1.1 — 20 September 2026
 
 The frontend production build passes. Focused React interaction checks cover draft-preserving arrow navigation, pick-up/drop into an empty parent, promotion at a root gap, cancellation, rename, completion, and deletion. The Windows build runs four focused native tests covering the 0.1.0 database upgrade, preservation of notes/images/subtrees through nesting and promotion, cycle rejection with transaction rollback, and descendant move/duplicate/delete behavior. The build result is recorded in GitHub Actions. Interactive Windows desktop use has not been manually verified.

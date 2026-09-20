@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "clearlist"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clearlist-core",
  "tauri",
@@ -489,7 +489,7 @@ dependencies = [
 
 [[package]]
 name = "clearlist-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "image",
  "rusqlite",

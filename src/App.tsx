@@ -8,6 +8,10 @@ import { useDesktop } from './hooks/useDesktop';
 import { Sidebar } from './components/Sidebar';
 import { TaskPanel } from './components/TaskPanel';
 import { TaskDetail } from './components/TaskDetail';
+import { SettingsPanel } from './components/SettingsPanel';
+import { useUi } from './state/ui';
+import { usePreferences } from './settings/preferences';
+import { useTheme } from './hooks/useTheme';
 import { TaskDialogs } from './components/TaskDialogs';
 export default function App() {
   const loaded = useApp((s) => s.loaded),
@@ -19,6 +23,10 @@ export default function App() {
     failedNotes = useStore(notes.store, (s) =>
       Object.values(s.drafts).some((d) => d.status === 'error'),
     );
+  const palette = useTheme();
+  const collapsed = usePreferences((s) => s.sidebarCollapsed);
+  const preferencesError = usePreferences((s) => s.saveError);
+  const settingsOpen = useUi((s) => s.settingsOpen);
   useDesktop();
   useEffect(() => {
     if (isTauri()) void appStore.getState().load();
@@ -47,9 +55,9 @@ export default function App() {
     );
   return (
     <div className="app-shell">
-      {(error || warning || failedNotes) && (
+      {(error || warning || failedNotes || preferencesError) && (
         <div className="error-bar" role="alert">
-          <span>{error ?? warning ?? 'Some notes have not been saved.'}</span>
+          <span>{error ?? warning ?? preferencesError ?? 'Some notes have not been saved.'}</span>
           {failedNotes && (
             <button
               type="button"
@@ -73,7 +81,9 @@ export default function App() {
         </div>
       )}
       <DragProvider>
-        <div className={`workspace ${task ? 'with-details' : ''}`}>
+        <div
+          className={`workspace ${task ? 'with-details' : ''} ${collapsed ? 'sidebar-collapsed' : ''}`}
+        >
           <Sidebar />
           <TaskPanel />
           {task && <TaskDetail key={task.id} task={task} />}
@@ -83,6 +93,7 @@ export default function App() {
         {pending ? 'Saving…' : 'Saved locally'}
       </div>
       <TaskDialogs />
+      {settingsOpen && <SettingsPanel palette={palette} />}
     </div>
   );
 }
