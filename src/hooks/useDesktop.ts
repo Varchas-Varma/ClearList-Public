@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { appStore, notes } from '../state/app';
+import { useTreeUi } from '../state/treeUi';
 import { useUi } from '../state/ui';
 import { clipboardImages, validateClipboardImage } from '../services/clipboard';
 export function editable(target: EventTarget | null): boolean {
@@ -22,11 +23,13 @@ export function useDesktop() {
       const control = e.ctrlKey || e.metaKey;
       if (control && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
+        useTreeUi.getState().setMoving(null);
         document.getElementById('search')?.focus();
         return;
       }
       if (control && !e.altKey && e.key.toLowerCase() === 'n') {
         e.preventDefault();
+        useTreeUi.getState().setMoving(null);
         if (e.shiftKey) document.getElementById('new-list')?.click();
         else {
           appStore.getState().setSearch('');

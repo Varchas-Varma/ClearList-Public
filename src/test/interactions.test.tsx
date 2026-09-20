@@ -109,13 +109,13 @@ describe('editing and navigation', () => {
       within(screen.getByRole('main')).getAllByRole('button', { name: /^Task: / })[0],
     ).toHaveAccessibleName('Task: Second');
     await user.click(screen.getByRole('button', { name: 'Task: Second' }));
-    await user.type(screen.getByRole('textbox', { name: 'Add a step' }), 'Check supply{Enter}');
-    await user.type(screen.getByRole('textbox', { name: 'Add a step' }), 'Check ground{Enter}');
-    await user.click(screen.getByRole('button', { name: 'Actions for step Check ground' }));
+    await user.type(screen.getByRole('textbox', { name: 'Add a subtask' }), 'Check supply{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Add a subtask' }), 'Check ground{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Actions for task Check ground' }));
     await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
-    expect(screen.getAllByRole('button', { name: /^Step: / })[0]).toHaveAccessibleName(
-      'Step: Check ground',
-    );
+    expect(
+      within(screen.getByRole('main')).getAllByRole('button', { name: /^Task: Check/ })[0],
+    ).toHaveAccessibleName('Task: Check ground');
   });
   it('cancels inline changes, rejects empty titles, searches notes and preserves text Delete', async () => {
     const user = await start();

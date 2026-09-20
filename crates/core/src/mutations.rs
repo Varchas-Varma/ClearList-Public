@@ -42,18 +42,40 @@ fn positions(
     Ok(())
 }
 fn normalize_tasks(conn: &Connection, list_id: &str) -> Result<()> {
-    let all = ids(
-        conn,
-        "SELECT id FROM tasks WHERE list_id=?1 ORDER BY position,id",
-        [list_id],
-    )?;
-    positions(conn, "tasks", "position", &all, None)?;
-    let done = ids(
-        conn,
-        "SELECT id FROM tasks WHERE list_id=?1 AND is_completed=1 ORDER BY completed_position,id",
-        [list_id],
-    )?;
-    positions(conn, "tasks", "completed_position", &done, None)
+    let parents: Vec<Option<String>> = conn.prepare("SELECT DISTINCT parent_id FROM tasks WHERE list_id=?1")?
+        .query_map([list_id], |r| r.get(0))?.collect::<std::result::Result<_, _>>()?;
+    for parent in parents {
+        let all = ids(conn, "SELECT id FROM tasks WHERE list_id=?1 AND parent_id IS ?2 ORDER BY position,id", params![list_id,parent])?;
+        positions(conn, "tasks", "position", &all, None)?;
+        let done = ids(conn, "SELECT id FROM tasks WHERE list_id=?1 AND parent_id IS ?2 AND is_completed=1 ORDER BY completed_position,id", params![list_id,parent])?;
+        positions(conn, "tasks", "completed_position", &done, None)?;
+    }
+    Ok(())
+}
+fn place_task(conn: &Connection, id: &str, list_id: &str, parent_id: Option<&str>, before_id: Option<&str>) -> Result<()> {
+    let old = task_list(conn, id)?;
+    let completed: bool = conn.query_row("SELECT is_completed FROM tasks WHERE id=?1", [id], |r| r.get(0))?;
+    if let Some(parent) = parent_id {
+        if task_list(conn, parent)? != list_id {
+            return Err(Error::Invalid("The parent belongs to a different list.".into()));
+        }
+        let cycle: bool = conn.query_row("WITH RECURSIVE tree(id) AS (SELECT ?1 UNION ALL SELECT t.id FROM tasks t JOIN tree p ON t.parent_id=p.id) SELECT EXISTS(SELECT 1 FROM tree WHERE id=?2)", params![id,parent], |r| r.get(0))?;
+        if cycle { return Err(Error::Invalid("A task cannot be moved into itself or its subtasks.".into())); }
+    }
+    if let Some(before) = before_id {
+        let valid: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM tasks WHERE id=?1 AND id<>?2 AND list_id=?3 AND parent_id IS ?4 AND (?4 IS NOT NULL OR is_completed=?5))", params![before,id,list_id,parent_id,completed], |r| r.get(0))?;
+        if !valid { return Err(Error::Invalid("The destination changed. Please try again.".into())); }
+    }
+    conn.execute(&format!("UPDATE tasks SET parent_id=?1,position=(SELECT COALESCE(MAX(position),-1)+1 FROM tasks WHERE list_id=?2 AND parent_id IS ?1),completed_position=(SELECT COALESCE(MAX(completed_position),-1)+1 FROM tasks WHERE list_id=?2 AND parent_id IS ?1),updated_at={NOW} WHERE id=?3"), params![parent_id,list_id,id])?;
+    conn.execute("WITH RECURSIVE tree(id) AS (SELECT ?1 UNION ALL SELECT t.id FROM tasks t JOIN tree p ON t.parent_id=p.id) UPDATE tasks SET list_id=?2 WHERE id IN (SELECT id FROM tree)", params![id,list_id])?;
+    let column = if parent_id.is_none() && completed { "completed_position" } else { "position" };
+    let mut ordered = ids(conn, &format!("SELECT id FROM tasks WHERE list_id=?1 AND parent_id IS ?2 AND id<>?3 ORDER BY {column},id"), params![list_id,parent_id,id])?;
+    let index = before_id.and_then(|b| ordered.iter().position(|v| v==b)).unwrap_or(ordered.len());
+    ordered.insert(index, id.to_owned());
+    positions(conn, "tasks", column, &ordered, None)?;
+    normalize_tasks(conn, &old)?;
+    if old != list_id { normalize_tasks(conn, list_id)?; }
+    Ok(())
 }
 fn normalize_lists(conn: &Connection) -> Result<()> {
     let all = ids(
@@ -137,12 +159,10 @@ impl Database {
                 normalize_tasks(&tx, &list_id)?;
             }
             Mutation::MoveTask { id, list_id } => {
-                let old = task_list(&tx, &id)?;
-                if old != list_id {
-                    tx.execute(&format!("UPDATE tasks SET list_id=?1,position=(SELECT COUNT(*) FROM tasks WHERE list_id=?1),completed_position=(SELECT COUNT(*) FROM tasks WHERE list_id=?1 AND is_completed=1),updated_at={NOW} WHERE id=?2"),params![list_id,id])?;
-                    normalize_tasks(&tx, &old)?;
-                    normalize_tasks(&tx, &list_id)?;
-                }
+                place_task(&tx, &id, &list_id, None, None)?;
+            }
+            Mutation::PlaceTask { id, list_id, parent_id, before_id } => {
+                place_task(&tx, &id, &list_id, parent_id.as_deref(), before_id.as_deref())?;
             }
             Mutation::ReorderTasks {
                 list_id,
@@ -154,10 +174,10 @@ impl Database {
                 } else {
                     "position"
                 };
-                let current=ids(&tx,&format!("SELECT id FROM tasks WHERE list_id=?1 AND is_completed=?2 ORDER BY {column},id"),params![list_id,completed])?;
+                let current=ids(&tx,&format!("SELECT id FROM tasks WHERE list_id=?1 AND parent_id IS NULL AND is_completed=?2 ORDER BY {column},id"),params![list_id,completed])?;
                 same_members(&current, &requested)?;
                 // Completed tasks retain their saved active slots. Only active slots exchange owners.
-                let slots:Vec<i64>=tx.prepare(&format!("SELECT {column} FROM tasks WHERE list_id=?1 AND is_completed=?2 ORDER BY {column},id"))?.query_map(params![list_id,completed],|r|r.get(0))?.collect::<std::result::Result<_,_>>()?;
+                let slots:Vec<i64>=tx.prepare(&format!("SELECT {column} FROM tasks WHERE list_id=?1 AND parent_id IS NULL AND is_completed=?2 ORDER BY {column},id"))?.query_map(params![list_id,completed],|r|r.get(0))?.collect::<std::result::Result<_,_>>()?;
                 positions(&tx, "tasks", column, &requested, Some(&slots))?;
                 normalize_tasks(&tx, &list_id)?;
             }
@@ -167,7 +187,7 @@ impl Database {
                 title: value,
             } => {
                 valid_id(&id)?;
-                tx.execute("INSERT INTO steps(id,task_id,title,position) VALUES(?1,?2,?3,(SELECT COUNT(*) FROM steps WHERE task_id=?2))",params![id,task_id,title(&value)?])?;
+                tx.execute("INSERT INTO tasks(id,parent_id,list_id,title,position) VALUES(?1,?2,(SELECT list_id FROM tasks WHERE id=?2),?3,(SELECT COUNT(*) FROM tasks WHERE parent_id=?2))",params![id,task_id,title(&value)?])?;
             }
             Mutation::UpdateStep {
                 id,
@@ -175,18 +195,18 @@ impl Database {
                 completed,
             } => {
                 let value = value.map(|v| title(&v)).transpose()?;
-                changed(tx.execute(&format!("UPDATE steps SET title=COALESCE(?1,title),is_completed=COALESCE(?2,is_completed),updated_at={NOW} WHERE id=?3"),params![value,completed,id])?)?;
+                changed(tx.execute(&format!("UPDATE tasks SET title=COALESCE(?1,title),is_completed=COALESCE(?2,is_completed),updated_at={NOW} WHERE id=?3 AND parent_id IS NOT NULL"),params![value,completed,id])?)?;
             }
             Mutation::DeleteStep { id } => {
                 let task_id: String =
                     tx.query_row("SELECT task_id FROM steps WHERE id=?1", [&id], |r| r.get(0))?;
-                changed(tx.execute("DELETE FROM steps WHERE id=?1", [id])?)?;
+                changed(tx.execute("DELETE FROM tasks WHERE id=?1 AND parent_id IS NOT NULL", [id])?)?;
                 let all = ids(
                     &tx,
                     "SELECT id FROM steps WHERE task_id=?1 ORDER BY position,id",
                     [task_id],
                 )?;
-                positions(&tx, "steps", "position", &all, None)?;
+                positions(&tx, "tasks", "position", &all, None)?;
             }
             Mutation::ReorderSteps {
                 task_id,
@@ -198,7 +218,7 @@ impl Database {
                     [task_id],
                 )?;
                 same_members(&current, &requested)?;
-                positions(&tx, "steps", "position", &requested, None)?;
+                positions(&tx, "tasks", "position", &requested, None)?;
             }
             Mutation::DeleteAttachment { id } => {
                 changed(tx.execute("DELETE FROM attachments WHERE id=?1", [id])?)?;
@@ -216,9 +236,21 @@ impl Database {
             .iter()
             .find(|t| t.id == id)
             .ok_or_else(|| Error::Invalid("This task no longer exists.".into()))?;
+        let mut mapping = std::collections::HashMap::new();
+        mapping.insert(id.to_owned(), new_id.to_owned());
+        let mut branch = vec![task];
+        let mut i = 0;
+        while i < branch.len() {
+            let parent_id = branch[i].id.clone();
+            for child in snapshot.tasks.iter().filter(|t| t.parent_id.as_deref() == Some(parent_id.as_str())) {
+                mapping.insert(child.id.clone(), uuid::Uuid::new_v4().to_string());
+                branch.push(child);
+            }
+            i += 1;
+        }
         let mut copies = Vec::new();
         let result = (|| -> Result<()> {
-            for attachment in snapshot.attachments.iter().filter(|a| a.task_id == id) {
+            for attachment in snapshot.attachments.iter().filter(|a| mapping.contains_key(&a.task_id)) {
                 let bytes = self.read_image(&attachment.stored_path)?;
                 let (_, ext) = files::validate_image(&bytes)?;
                 let copy_id = uuid::Uuid::new_v4().to_string();
@@ -227,12 +259,13 @@ impl Database {
                 copies.push((copy_id, name, attachment));
             }
             let tx = self.conn.transaction()?;
-            tx.execute("INSERT INTO tasks(id,list_id,title,notes,is_important,position) VALUES(?1,?2,?3,?4,?5,(SELECT COUNT(*) FROM tasks WHERE list_id=?2))",params![new_id,task.list_id,task.title,task.notes,task.is_important])?;
-            for step in snapshot.steps.iter().filter(|s| s.task_id == id) {
-                tx.execute("INSERT INTO steps(id,task_id,title,is_completed,position) VALUES(?1,?2,?3,?4,?5)",params![uuid::Uuid::new_v4().to_string(),new_id,step.title,step.is_completed,step.position])?;
+            for original in &branch {
+                let parent = if original.id == id { original.parent_id.clone() } else { original.parent_id.as_ref().and_then(|p| mapping.get(p).cloned()) };
+                let position: i64 = if original.id == id { tx.query_row("SELECT COUNT(*) FROM tasks WHERE list_id=?1 AND parent_id IS ?2", params![task.list_id,parent], |r|r.get(0))? } else { original.position };
+                tx.execute("INSERT INTO tasks(id,list_id,parent_id,title,notes,is_important,is_completed,position,completed_position,completed_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",params![mapping[&original.id],original.list_id,parent,original.title,original.notes,original.is_important,original.id!=id && original.is_completed,position,original.completed_position,if original.id==id {None} else {original.completed_at.as_deref()}])?;
             }
             for (copy_id, name, original) in &copies {
-                tx.execute("INSERT INTO attachments(id,task_id,file_name,stored_path,mime_type,file_size) VALUES(?1,?2,?3,?4,?5,?6)",params![copy_id,new_id,original.file_name,name,original.mime_type,original.file_size])?;
+                tx.execute("INSERT INTO attachments(id,task_id,file_name,stored_path,mime_type,file_size) VALUES(?1,?2,?3,?4,?5,?6)",params![copy_id,mapping[&original.task_id],original.file_name,name,original.mime_type,original.file_size])?;
             }
             tx.commit()?;
             Ok(())

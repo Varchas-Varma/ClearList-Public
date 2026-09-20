@@ -1,12 +1,12 @@
 # Clearlist
 
-A small, local Windows desktop to-do app: lists, tasks, one level of steps, plain notes, and pasted images. No accounts, cloud services, calendars, reminders, telemetry or automatic updater. The layout follows familiar list-management conventions with original styling and icons.
+A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. No accounts, cloud services, calendars, reminders, telemetry or automatic updater. The layout follows familiar list-management conventions with original styling and icons.
 
 ## Quick start
 
-For a Windows installer without setting up a local build environment, put the contents of this folder at a GitHub repository root. The included **Windows installer** workflow builds on Windows when pushed to `main` or `master`; it can also be started from **Actions → Windows installer → Run workflow**. Download **Clearlist-windows-installer** from the successful run, extract it, and run the setup executable. This route performs dependency installation and the required application build only. It follows [Tauri's GitHub build guidance](https://v2.tauri.app/distribute/pipelines/github/).
+Download **Clearlist-0.1.1-windows-installer** from the latest successful **Actions → Windows installer** run in this repository, extract the ZIP, close Clearlist, and run `Clearlist_0.1.1_x64-setup.exe`. Install over 0.1.0 to retain your existing lists, notes, and images. Old steps become subtasks automatically on first launch.
 
-The Windows installer was built successfully on 18 September 2026. Download **Clearlist-windows-installer** from the successful **Actions → Windows installer** run, extract the ZIP, and run the setup executable. This artifact is retained until 2 October 2026; rerun the workflow to generate a fresh copy afterward. The generated installer is unsigned. The CI workflow uses faster release compilation settings and caches Rust dependencies.
+Version 0.1.1 adds visible, nested subtasks; drag tasks onto tasks to nest them or into gaps to reorder/promote them. The keyboard follows the same model. Task inputs disable saved-entry suggestions. The installer remains unsigned. Builds run the required frontend/native compilation plus focused upgrade and hierarchy checks; Rust dependencies are cached.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 
@@ -118,11 +118,11 @@ VS Code Terminal → Run Task exposes development, release, and test commands. C
 Because this is a Cargo workspace, artifacts are written to the root **target** directory:
 
 - Executable: `target\release\clearlist.exe`
-- x64 installer: `target\release\bundle\nsis\Clearlist_0.1.0_x64-setup.exe`
+- x64 installer: `target\release\bundle\nsis\Clearlist_0.1.1_x64-setup.exe`
 
 The architecture suffix changes for a different target. An explicit `--target` adds the target triple under `target`; Tauri prints exact paths at the end. `src-tauri/tauri.windows.conf.json` automatically selects NSIS and `currentUser` installation. The installer handles a missing WebView2 runtime. Builds are unsigned because no signing certificate is configured.
 
-To update an installed copy, back up your data, close Clearlist, rebuild, and run the new installer. Keep `com.clearlist.desktop` as the identifier to retain the same data directory. There is no automatic update service.
+To update an installed copy, close Clearlist and run the new installer. Version 0.1.1 migrates the database transactionally; do not reopen the upgraded database in 0.1.0. You can back up the data directory before upgrading. Keep `com.clearlist.desktop` as the identifier to retain the same data directory. There is no automatic update service.
 
 The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `index.html`. The Rust package name controls the executable basename. Changing the bundle identifier changes the data-directory location and requires updating the reset script. Keep the published identifier unchanged when releasing updates. The original icon is `src-tauri/icons/source.svg`; regenerate its platform sizes with `npm run tauri icon src-tauri/icons/source.svg`.
 
@@ -130,9 +130,9 @@ The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `inde
 
 - **Lists:** Create with New list. Double-click a custom list name or choose Rename. Enter or focus loss saves; Escape cancels. Duplicate names are allowed. Tasks is fixed in place and cannot be deleted.
 - **Tasks:** Type and press Enter to add. Single-click selects; double-click the title or choose Rename to edit. Use the checkbox to complete and the star to mark important. The action menu supports moving, duplication, and deletion.
-- **Reordering:** Drag the visible grip. Drop targets are outlined; dragging starts only after 6 pixels of movement. Active and completed tasks are sorted independently. Drag a task onto a sidebar list to move it. Search results use explicit move commands and cannot be reordered.
-- **Keyboard reordering:** Focus a grip, press Space, use arrow keys, then Space to drop or Escape to cancel. Menus also offer Move up and Move down. Move to list is available without dragging.
-- **Steps:** One child level, each with editable title, checkbox, grip, and actions.
+- **Reordering:** Drag the visible grip onto a task to make it a subtask, or into a gap to reorder or promote it. Drop targets are outlined; dragging starts only after 6 pixels of movement. Active and completed tasks are sorted independently. Drag a task onto a sidebar list to move it. Search results use explicit move commands and cannot be reordered.
+- **Keyboard moves:** From task entry, Up/Down focuses a task and keeps the unfinished draft. Enter picks it up. Up/Down then visits insertion gaps and task rows. Enter on a gap places it there; Enter on a task makes it a subtask. Right on a task enters its subtasks so you can choose a position; Left returns to its parent level. Escape cancels without changing data. Menus also offer Move up, Move down, and Make top-level task.
+- **Subtasks:** Shown under their parent in the main list. Each has the same title, checkbox, notes, images, grip, and actions as a top-level task. Moving a task carries its entire subtree and content. Use the chevron to collapse/expand a branch; Insert adds a subtask. A task cannot be moved into itself or its descendants.
 - **Notes:** Plain multiline text, saved 450 ms after typing stops. Blur, selecting another task, and normal app shutdown flush pending changes. A failed draft remains available with a retry action even after changing selection.
 - **Images:** Select a task and paste into the detail/notes area, or while no unrelated text field is being edited. PNG, JPEG and WebP are supported, up to **15 MiB (15,728,640 bytes)** and **40 million pixels** each. Rust verifies the actual format and decodes within a memory limit. Original bytes are preserved. Clipboard images exposed as files in copied HTML are supported; remote image URLs are not downloaded. A paste containing image files attaches the images and omits accompanying clipboard text/filenames. Ordinary text-only paste remains unchanged. Multiple images attach independently.
 - **Preview and deletion:** Click a thumbnail for a larger in-app preview. Missing files show Image unavailable with Retry. Image, task, and list deletion require confirmation; task/list confirmation explains dependent data removal.
@@ -140,18 +140,24 @@ The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `inde
 
 ### Shortcuts
 
-| Shortcut                         | Action                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Ctrl+N                           | Focus task entry in the selected list                                                                               |
-| Ctrl+Shift+N                     | Open new-list entry                                                                                                 |
-| Ctrl+F                           | Focus search                                                                                                        |
-| Enter                            | Submit an item or confirm inline editing                                                                            |
-| F2 on a title                    | Rename that title                                                                                                   |
-| Escape                           | Cancel an inline edit, dismiss the top menu/preview/dialog, or close details; notes/search first release text focus |
-| Delete                           | Confirm deletion of the selected task only when outside editable fields                                             |
-| Space, arrows, Space on a grip   | Pick up, reorder, drop                                                                                              |
-| Tab / Shift+Tab                  | Navigate controls                                                                                                   |
-| Up / Down / Home / End in a menu | Navigate commands                                                                                                   |
+| Shortcut              | Action                                                                           |
+| --------------------- | -------------------------------------------------------------------------------- |
+| Up / Down             | Browse siblings; from task entry, keep the draft and focus the last / first task |
+| Enter on a task       | Pick up the task; arrow keys then visit task rows and insertion gaps             |
+| Enter while moving    | Drop at the highlighted gap, or as a subtask of the highlighted task             |
+| Right / Left          | Enter subtasks / return to parent level, including while moving                  |
+| Escape                | Cancel a move/edit, or close details and return to task entry                    |
+| Home / End            | First / last sibling or drop position                                            |
+| F2                    | Rename focused task                                                              |
+| Delete                | Confirm removal of focused task and its subtree                                  |
+| Space                 | Complete / uncomplete focused task                                               |
+| Insert                | Add a subtask to focused task                                                    |
+| Ctrl+Enter            | Open task details                                                                |
+| Ctrl+D                | Duplicate focused task and its subtree                                           |
+| Ctrl+N / Ctrl+Shift+N | New task / new list                                                              |
+| Ctrl+F                | Search                                                                           |
+| Tab / Shift+Tab       | Next / previous control                                                          |
+| Enter in text entry   | Add item or save title                                                           |
 
 ### Saved ordering
 

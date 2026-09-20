@@ -21,6 +21,7 @@ export function AddField({
   return (
     <form
       className="add-field"
+      autoComplete="off"
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -45,6 +46,9 @@ export function AddField({
         <Plus size={18} aria-hidden="true" />
         <input
           ref={input}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           id={id}
           aria-label={label}
           placeholder={label}

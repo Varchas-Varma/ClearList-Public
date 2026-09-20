@@ -1,6 +1,12 @@
 import { GripVertical } from 'lucide-react';
-import type { useSortable } from '@dnd-kit/sortable';
-export function Handle({ sort, label }: { sort: ReturnType<typeof useSortable>; label: string }) {
+import type { useDraggable } from '@dnd-kit/core';
+export function Handle({
+  sort,
+  label,
+}: {
+  sort: Pick<ReturnType<typeof useDraggable>, 'attributes' | 'listeners' | 'setActivatorNodeRef'>;
+  label: string;
+}) {
   return (
     <button
       type="button"
@@ -9,7 +15,7 @@ export function Handle({ sort, label }: { sort: ReturnType<typeof useSortable>; 
       {...sort.attributes}
       {...sort.listeners}
       aria-label={label}
-      title="Drag to reorder, or press Space and use arrow keys"
+      title="Drag to move; focus the task and press Enter for keyboard moves"
       onClick={(e) => e.stopPropagation()}
     >
       <GripVertical size={15} />

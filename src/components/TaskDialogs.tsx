@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { branchIds } from '../tree';
+import { focusTarget } from '../state/treeUi';
 import type { Task } from '../domain';
 import { appStore, notes, useApp } from '../state/app';
 import { useUi } from '../state/ui';
@@ -64,12 +66,18 @@ export function TaskDialogs() {
       {deletingId && (
         <Confirm
           title="Delete task?"
-          message={`Permanently delete ${deleting ? `“${deleting.title}”` : 'this task'}, its steps, notes, and attached images?`}
+          message={`Permanently delete ${deleting ? `“${deleting.title}”` : 'this task'}, its subtasks, notes, and attached images?`}
           onClose={() => useUi.getState().requestDelete(null)}
           onConfirm={async () => {
-            if (!(await notes.flush(deletingId))) return false;
+            const removed = branchIds(tasks, deletingId);
+            for (const id of removed) if (!(await notes.flush(id))) return false;
             const ok = await appStore.getState().mutate({ kind: 'deleteTask', id: deletingId });
-            if (ok) notes.discard(deletingId);
+            if (ok) {
+              removed.forEach(notes.discard);
+              const next = tasks.find((t) => !removed.has(t.id) && t.listId === deleting?.listId);
+              if (next) focusTarget({ kind: 'row', id: next.id });
+              else requestAnimationFrame(() => document.getElementById('new-task')?.focus());
+            }
             return ok;
           }}
         />

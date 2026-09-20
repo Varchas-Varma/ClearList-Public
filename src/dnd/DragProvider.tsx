@@ -8,95 +8,94 @@ import {
   pointerWithin,
   useSensor,
   useSensors,
-  type Announcements,
   type CollisionDetection,
   type KeyboardCoordinateGetter,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { appStore } from '../state/app';
+import { useTreeUi, focusTarget } from '../state/treeUi';
+import { branchIds, canPlace } from '../tree';
 import { reorder, type DragItem } from './actions';
-function sameScope(source: DragItem | undefined, target: DragItem | undefined): boolean {
-  if (!source || !target || source.kind !== target.kind) return false;
-  if (source.kind === 'list') return true;
-  if (source.kind === 'step' && target.kind === 'step') return source.taskId === target.taskId;
-  return (
-    source.kind === 'task' &&
-    target.kind === 'task' &&
-    source.listId === target.listId &&
-    source.completed === target.completed
-  );
-}
 const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
-  const source = args.context.active?.data.current as DragItem | undefined;
-  const droppableRects = new Map(
-    [...args.context.droppableRects].filter(([id]) =>
-      sameScope(
-        source,
-        args.context.droppableContainers.get(id)?.data.current as DragItem | undefined,
-      ),
+  const rects = new Map(
+    [...args.context.droppableRects].filter(
+      ([id]) => args.context.droppableContainers.get(id)?.data.current?.kind === 'list',
     ),
   );
   return sortableKeyboardCoordinates(event, {
     ...args,
-    context: { ...args.context, droppableRects },
+    context: { ...args.context, droppableRects: rects },
   });
-};
-const announcements: Announcements = {
-  onDragStart: ({ active }) => `Picked up ${active.data.current?.label ?? 'item'}.`,
-  onDragOver: ({ active, over }) =>
-    over
-      ? `${active.data.current?.label ?? 'Item'} is over ${over.data.current?.label ?? 'a drop target'}.`
-      : 'No drop target.',
-  onDragEnd: ({ active, over }) =>
-    over
-      ? `Dropped ${active.data.current?.label ?? 'item'} at ${over.data.current?.label ?? 'the target'}.`
-      : 'Reordering cancelled.',
-  onDragCancel: () => 'Reordering cancelled.',
 };
 const collision: CollisionDetection = (args) => {
   const source = args.active.data.current as DragItem | undefined;
+  const data = appStore.getState().data;
+  const excluded = source?.kind === 'task' ? branchIds(data.tasks, source.id) : new Set<string>();
   const containers = args.droppableContainers.filter((c) => {
     const target = c.data.current as DragItem | undefined;
-    return sameScope(source, target) || (source?.kind === 'task' && target?.kind === 'list-drop');
+    if (source?.kind === 'list') return target?.kind === 'list';
+    if (source?.kind !== 'task' || !target) return false;
+    if (target.kind === 'list-drop') return true;
+    if (target.kind === 'task') return !excluded.has(target.id);
+    return target.kind === 'gap' && canPlace(data.tasks, source.id, target);
   });
-  const filtered = { ...args, droppableContainers: containers },
-    hits = pointerWithin(filtered);
-  return hits.length
-    ? hits
-    : closestCenter({
-        ...filtered,
-        droppableContainers: containers.filter((c) => c.data.current?.kind !== 'list-drop'),
-      });
+  const filtered = { ...args, droppableContainers: containers };
+  return source?.kind === 'list' ? closestCenter(filtered) : pointerWithin(filtered);
 };
 export function DragProvider({ children }: { children: ReactNode }) {
-  const [active, setActive] = useState<DragItem | null>(null),
-    sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-      useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates }),
-    );
+  const [active, setActive] = useState<DragItem | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates }),
+  );
+  function clear() {
+    setActive(null);
+    useTreeUi.setState({ draggingId: null });
+  }
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={collision}
-      accessibility={{
-        announcements,
-        screenReaderInstructions: {
-          draggable:
-            'Press Space to pick up. Use arrow keys to reorder. Press Space to drop, or Escape to cancel.',
-        },
+      onDragStart={({ active }) => {
+        const item = active.data.current as DragItem;
+        setActive(item);
+        useTreeUi.setState({
+          draggingId: item.kind === 'task' ? item.id : null,
+          movingId: null,
+          target: null,
+        });
       }}
-      onDragStart={({ active }) => setActive(active.data.current as DragItem)}
-      onDragCancel={() => setActive(null)}
+      onDragCancel={clear}
       onDragEnd={({ active, over }) => {
-        setActive(null);
-        if (!over) return;
-        const source = active.data.current as DragItem | undefined,
-          target = over.data.current as DragItem | undefined;
+        clear();
+        const source = active.data.current as DragItem | undefined;
+        const target = over?.data.current as DragItem | undefined;
         if (!source || !target) return;
-        if (source.kind === 'task' && target.kind === 'list-drop') {
-          if (source.listId !== target.id)
-            void appStore.getState().mutate({ kind: 'moveTask', id: source.id, listId: target.id });
-        } else reorder(source, target.id);
+        if (source.kind === 'list') {
+          reorder(source, target.id);
+          return;
+        }
+        if (source.kind !== 'task') return;
+        const task = appStore.getState().data.tasks.find((t) => t.id === source.id);
+        if (!task) return;
+        if (target.kind === 'list-drop') {
+          void appStore.getState().mutate({ kind: 'moveTask', id: task.id, listId: target.id });
+        } else if (target.kind === 'task' || target.kind === 'gap') {
+          const parentId = target.kind === 'task' ? target.id : target.parentId;
+          if (parentId) useTreeUi.getState().expand(parentId);
+          void appStore
+            .getState()
+            .mutate({
+              kind: 'placeTask',
+              id: task.id,
+              listId: target.listId,
+              parentId,
+              beforeId: target.kind === 'gap' ? target.beforeId : null,
+            })
+            .then((ok) => {
+              if (ok) focusTarget({ kind: 'row', id: task.id });
+            });
+        }
       }}
     >
       {children}

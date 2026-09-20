@@ -42,10 +42,13 @@ jobs:
       - name: Build Windows installer
         run: npm run tauri build -- --bundles nsis
 
+      - name: Verify upgrade and hierarchy moves
+        run: cargo test --release -p clearlist-core --test hierarchy
+
       - name: Make installer available for download
         uses: actions/upload-artifact@v7
         with:
-          name: Clearlist-windows-installer
+          name: Clearlist-0.1.1-windows-installer
           path: target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
           retention-days: 14

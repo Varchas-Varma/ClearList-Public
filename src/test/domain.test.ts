@@ -26,7 +26,7 @@ describe('domain behavior', () => {
       taskId: 'c',
       title: 'Review PCB layout',
     });
-    expect(searchTasks(data, 'pCb').map((t) => t.id)).toEqual(['b', 'c']);
+    expect(searchTasks(data, 'pCb').map((t) => t.id)).toEqual(['b', 'c', 'step']);
     expect(searchTasks(data, 'BUILD')[0].id).toBe('a');
     expect(searchTasks(data, '   ')).toEqual([]);
   });
@@ -53,7 +53,7 @@ describe('domain behavior', () => {
       ['s3', 0],
       ['s2', 1],
     ]);
-    expect(data.tasks.map((t) => t.id)).toEqual(['a', 'b', 'c']);
+    expect(data.tasks.filter((t) => !t.parentId).map((t) => t.id)).toEqual(['a', 'b', 'c']);
   });
   it('searches several thousand tasks with steps', () => {
     const data = populated(),

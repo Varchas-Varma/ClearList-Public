@@ -9,6 +9,7 @@ export interface List {
 export interface Task {
   id: string;
   listId: string;
+  parentId: string | null;
   title: string;
   notes: string;
   isCompleted: boolean;
@@ -62,6 +63,13 @@ export type Mutation =
   | { kind: 'deleteTask'; id: string }
   | { kind: 'duplicateTask'; id: string; newId: string }
   | { kind: 'moveTask'; id: string; listId: string }
+  | {
+      kind: 'placeTask';
+      id: string;
+      listId: string;
+      parentId: string | null;
+      beforeId: string | null;
+    }
   | { kind: 'reorderTasks'; listId: string; completed: boolean; ids: string[] }
   | { kind: 'createStep'; id: string; taskId: string; title: string }
   | { kind: 'updateStep'; id: string; title?: string; completed?: boolean }
@@ -76,7 +84,7 @@ export function cleanTitle(value: string): string {
 }
 export function taskOrder(tasks: Task[], listId: string, completed: boolean): Task[] {
   return tasks
-    .filter((t) => t.listId === listId && t.isCompleted === completed)
+    .filter((t) => t.listId === listId && !t.parentId && t.isCompleted === completed)
     .sort(
       (a, b) =>
         (completed ? a.completedPosition - b.completedPosition : a.position - b.position) ||

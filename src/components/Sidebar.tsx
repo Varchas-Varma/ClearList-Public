@@ -14,7 +14,8 @@ import { EditableText } from './EditableText';
 function ListRow({ list, index, custom }: { list: List; index: number; custom: List[] }) {
   const selected = useApp((s) => s.selectedListId === list.id && !s.search.trim()),
     count = useApp(
-      (s) => s.data.tasks.filter((t) => t.listId === list.id && !t.isCompleted).length,
+      (s) =>
+        s.data.tasks.filter((t) => t.listId === list.id && !t.parentId && !t.isCompleted).length,
     );
   const [editing, setEditing] = useState(false),
     [deleting, setDeleting] = useState(false),
@@ -121,6 +122,7 @@ export function Sidebar() {
         <Search size={16} aria-hidden="true" />
         <input
           id="search"
+          autoComplete="off"
           type="search"
           aria-label="Search all tasks"
           placeholder="Search all tasks"

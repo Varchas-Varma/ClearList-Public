@@ -34,7 +34,7 @@ impl Database {
             "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;",
         )?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version > 1 {
+        if version > 2 {
             return Err(Error::Invalid(
                 "Your data needs a newer version of Clearlist.".into(),
             ));
@@ -49,12 +49,18 @@ impl Database {
             tx.pragma_update(None, "user_version", 1)?;
             tx.commit()?;
         }
+        if version < 2 {
+            let tx = conn.transaction()?;
+            tx.execute_batch(include_str!("../migrations/002_task_tree.sql"))?;
+            tx.pragma_update(None, "user_version", 2)?;
+            tx.commit()?;
+        }
         Ok(Self { conn, image_dir })
     }
     pub fn snapshot(&self) -> Result<Snapshot> {
         let tx = self.conn.unchecked_transaction()?;
         let lists=tx.prepare("SELECT id,name,position,is_default,created_at,updated_at FROM lists ORDER BY position,id")?.query_map([],|r|Ok(List{id:r.get(0)?,name:r.get(1)?,position:r.get(2)?,is_default:r.get(3)?,created_at:r.get(4)?,updated_at:r.get(5)?}))?.collect::<std::result::Result<Vec<_>,_>>()?;
-        let tasks=tx.prepare("SELECT id,list_id,title,notes,is_completed,is_important,position,completed_position,created_at,updated_at,completed_at FROM tasks ORDER BY position,id")?.query_map([],|r|Ok(Task{id:r.get(0)?,list_id:r.get(1)?,title:r.get(2)?,notes:r.get(3)?,is_completed:r.get(4)?,is_important:r.get(5)?,position:r.get(6)?,completed_position:r.get(7)?,created_at:r.get(8)?,updated_at:r.get(9)?,completed_at:r.get(10)?}))?.collect::<std::result::Result<Vec<_>,_>>()?;
+        let tasks=tx.prepare("SELECT id,list_id,title,notes,is_completed,is_important,position,completed_position,created_at,updated_at,completed_at,parent_id FROM tasks ORDER BY position,id")?.query_map([],|r|Ok(Task{id:r.get(0)?,list_id:r.get(1)?,title:r.get(2)?,notes:r.get(3)?,is_completed:r.get(4)?,is_important:r.get(5)?,position:r.get(6)?,completed_position:r.get(7)?,created_at:r.get(8)?,updated_at:r.get(9)?,completed_at:r.get(10)?,parent_id:r.get(11)?}))?.collect::<std::result::Result<Vec<_>,_>>()?;
         let steps=tx.prepare("SELECT id,task_id,title,is_completed,position,created_at,updated_at FROM steps ORDER BY position,id")?.query_map([],|r|Ok(Step{id:r.get(0)?,task_id:r.get(1)?,title:r.get(2)?,is_completed:r.get(3)?,position:r.get(4)?,created_at:r.get(5)?,updated_at:r.get(6)?}))?.collect::<std::result::Result<Vec<_>,_>>()?;
         let attachments=tx.prepare("SELECT id,task_id,file_name,stored_path,mime_type,file_size,created_at FROM attachments ORDER BY created_at,id")?.query_map([],|r|Ok(Attachment{id:r.get(0)?,task_id:r.get(1)?,file_name:r.get(2)?,stored_path:r.get(3)?,mime_type:r.get(4)?,file_size:r.get(5)?,created_at:r.get(6)?}))?.collect::<std::result::Result<Vec<_>,_>>()?;
         tx.commit()?;

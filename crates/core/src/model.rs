@@ -14,6 +14,7 @@ pub struct List {
 pub struct Task {
     pub id: String,
     pub list_id: String,
+    pub parent_id: Option<String>,
     pub title: String,
     pub notes: String,
     pub is_completed: bool,
@@ -101,6 +102,12 @@ pub enum Mutation {
     MoveTask {
         id: String,
         list_id: String,
+    },
+    PlaceTask {
+        id: String,
+        list_id: String,
+        parent_id: Option<String>,
+        before_id: Option<String>,
     },
     ReorderTasks {
         list_id: String,

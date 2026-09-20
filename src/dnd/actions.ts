@@ -1,7 +1,9 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { taskOrder, type Mutation } from '../domain';
 import { appStore } from '../state/app';
+import type { Place } from '../tree';
 export type DragItem =
+  | ({ kind: 'gap'; id: string; label: string } & Place)
   | { kind: 'list'; id: string; label: string }
   | { kind: 'list-drop'; id: string; label: string }
   | { kind: 'task'; id: string; label: string; listId: string; completed: boolean }
@@ -14,6 +16,13 @@ export function reorder(item: DragItem, targetId: string) {
     ids = data.lists.filter((l) => !l.isDefault).map((l) => l.id);
     change = { kind: 'reorderLists', ids };
   } else if (item.kind === 'task') {
+    const task = data.tasks.find((t) => t.id === item.id);
+    if (task?.parentId) {
+      return reorder(
+        { kind: 'step', id: task.id, taskId: task.parentId, label: task.title },
+        targetId,
+      );
+    }
     ids = taskOrder(data.tasks, item.listId, item.completed).map((t) => t.id);
     change = { kind: 'reorderTasks', listId: item.listId, completed: item.completed, ids };
   } else if (item.kind === 'step') {

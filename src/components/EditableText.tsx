@@ -82,6 +82,9 @@ export function EditableText({
     <div className={`inline-editor ${className}`} onClick={(e) => e.stopPropagation()}>
       <input
         ref={input}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         value={draft}
         aria-label={label}
         maxLength={1000}

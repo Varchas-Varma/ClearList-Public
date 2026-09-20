@@ -46,7 +46,7 @@ fn order(db: &Database, list: &str, completed: bool) -> Vec<String> {
         .unwrap()
         .tasks
         .into_iter()
-        .filter(|t| t.list_id == list && t.is_completed == completed)
+        .filter(|t| t.list_id == list && t.parent_id.is_none() && t.is_completed == completed)
         .collect();
     tasks.sort_by_key(|t| {
         if completed {
@@ -363,7 +363,7 @@ fn duplication_copies_images_and_steps_without_shared_files() {
     );
     db.apply(Mutation::DeleteTask { id: parent }).unwrap();
     let saved = db.snapshot().unwrap();
-    assert_eq!(saved.tasks[0].id, copy);
+    assert_eq!(saved.tasks.iter().find(|t| t.parent_id.is_none()).unwrap().id, copy);
     assert!(db.read_attachment(&saved.attachments[0].id).is_ok());
 }
 #[test]

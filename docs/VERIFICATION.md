@@ -1,5 +1,11 @@
 # Verification record
 
+## 0.1.1 — 20 September 2026
+
+The frontend production build passes. Focused React interaction checks cover draft-preserving arrow navigation, pick-up/drop into an empty parent, promotion at a root gap, cancellation, rename, completion, and deletion. The Windows build runs four focused native tests covering the 0.1.0 database upgrade, preservation of notes/images/subtrees through nesting and promotion, cycle rejection with transaction rollback, and descendant move/duplicate/delete behavior. The build result is recorded in GitHub Actions. Interactive Windows desktop use has not been manually verified.
+
+## Historical 0.1.0 verification
+
 Deployment update, 18 September 2026: the native Windows build and NSIS packaging succeeded in GitHub Actions. The installer is available as **Clearlist-windows-installer**. The build fixed the Tauri request-body import to `InvokeBody`; no additional application test suites were run during deployment. Interactive use on a Windows desktop remains unverified.
 
 The following record describes the earlier verification on 17 September 2026 in a Linux x86_64 workspace; the Windows build result above supersedes its native compilation limitation.
