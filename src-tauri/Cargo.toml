@@ -1,6 +1,6 @@
 [package]
 name = "clearlist"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT"
 default-run = "clearlist"
@@ -9,6 +9,7 @@ tauri-build = { version = "2.6.3", features = [] }
 [dependencies]
 tauri = { version = "2.11.5", features = [] }
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
 clearlist-core = { path = "../crates/core" }
 [features]
 custom-protocol = ["tauri/custom-protocol"]

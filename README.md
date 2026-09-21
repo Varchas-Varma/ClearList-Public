@@ -1,12 +1,19 @@
-# Clearlist 0.1.2
+# Clearlist 0.1.3
 
-A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. No accounts, cloud services, calendars, reminders, telemetry or automatic updater. The layout follows familiar list-management conventions with original styling and icons.
+A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. Task data stays local, with no accounts, cloud sync, calendars, reminders, or telemetry. Optional installation of signed updates uses public GitHub Releases. The layout follows familiar list-management conventions with original styling and icons.
 
 ## Quick start
 
-Download **Clearlist-0.1.2-windows-installer** from the latest successful **Actions → Windows installer** run in this repository, extract the ZIP, close Clearlist, and run `Clearlist_0.1.2_x64-setup.exe`. Install over 0.1.0 or 0.1.1 to retain your existing lists, notes, and images. Old steps become subtasks automatically on first launch.
+Download the installer for your PC from [the latest release](https://github.com/Varchas-Varma/ClearList-Public/releases/latest):
 
-Version 0.1.2 adds a Settings panel, reassignable shortcuts, three full colour wheels with hex input, and a collapsible sidebar. It keeps the visible, nested subtasks from 0.1.1; drag tasks onto tasks to nest them or into gaps to reorder/promote them. The keyboard follows the same model. Task inputs disable saved-entry suggestions. The installer remains unsigned. Builds run the required frontend/native compilation plus focused upgrade and hierarchy checks; Rust dependencies are cached.
+- **Intel/AMD (x64):** `Clearlist_0.1.3_x64-setup.exe`
+- **Windows on ARM (ARM64):** `Clearlist_0.1.3_arm64-setup.exe`
+
+Windows 10/11 are supported on these two architectures. Close Clearlist and run the installer over the existing installation. Lists, notes, images, and settings are retained. Version 0.1.2 and earlier need this one final manual installation on each PC to enable future in-app updates. No GitHub account is required.
+
+Version 0.1.3 checks for updates on launch and adds **Settings → Updates**, download progress, and an installation/restart confirmation. It saves pending edits before invoking the installer. A new **Check for updates** shortcut is initially unassigned. Settings, customizable colours, collapsible sidebar, visible subtasks, drag hierarchy moves, and keyboard navigation from 0.1.1–0.1.2 remain available.
+
+Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The release workflow builds both architectures and publishes only after both signed installers are ready.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 
@@ -18,10 +25,10 @@ npm run tauri dev
 Build an optimized executable and an NSIS installer for the current Windows account:
 
 ```powershell
-npm run tauri build
+npm run tauri build -- --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
 
-The first build downloads Rust crates and packaging tools; later builds reuse them. No global Tauri CLI, Corepack, database server, Docker, or administrator rights are needed for ordinary use.
+The local command above skips updater artifacts, so it does not require the production signing key. Official releases use the signing workflow described below. The first build downloads Rust crates and packaging tools; later builds reuse them. No global Tauri CLI, Corepack, database server, Docker, or administrator rights are needed for ordinary use.
 
 ## Windows and VS Code setup
 
@@ -115,14 +122,20 @@ VS Code Terminal → Run Task exposes development, release, and test commands. C
 
 ## Windows artifacts and app updates
 
-Because this is a Cargo workspace, artifacts are written to the root **target** directory:
+Because this is a Cargo workspace, artifacts are written to the root **target** directory. A build with `--target x86_64-pc-windows-msvc` writes the executable and installer under `target\x86_64-pc-windows-msvc\release`; ARM64 uses `aarch64-pc-windows-msvc`. NSIS installers and `.sig` update signatures are in `bundle\nsis` below that directory. A build without `--target` uses `target\release`.
 
-- Executable: `target\release\clearlist.exe`
-- x64 installer: `target\release\bundle\nsis\Clearlist_0.1.2_x64-setup.exe`
+`src-tauri/tauri.windows.conf.json` selects NSIS and installation for the current Windows account. The installer downloads WebView2 if needed. Keep the application identifier `com.clearlist.desktop` to preserve the existing data location. This release makes no database schema changes. Do not reopen a migrated database in 0.1.0.
 
-The architecture suffix changes for a different target. An explicit `--target` adds the target triple under `target`; Tauri prints exact paths at the end. `src-tauri/tauri.windows.conf.json` automatically selects NSIS and `currentUser` installation. The installer handles a missing WebView2 runtime. Builds are unsigned because no signing certificate is configured.
+On launch, Clearlist checks the public release feed with a 15-second timeout. An available update displays a notice; **Review update** opens Settings. **Settings → Updates → Check for updates** retries manually. **Install update…** opens a confirmation; **Install and restart** downloads and verifies the installer, flushes pending notes and writes, then installs and restarts. A failed download, signature verification, or save leaves the current installation in place and shows an error. Offline checks do not interrupt task use. The app follows its installed architecture automatically and requires no machine-specific token or account.
 
-To update an installed copy, close Clearlist and run the new installer. Version 0.1.1 migrates the database transactionally; do not reopen the upgraded database in 0.1.0. You can back up the data directory before upgrading. Keep `com.clearlist.desktop` as the identifier to retain the same data directory. There is no automatic update service.
+### Publishing the next release
+
+1. Keep the generated private signing key in the repository's encrypted Actions secret **TAURI_SIGNING_PRIVATE_KEY**. The matching public key is in `src-tauri/tauri.conf.json`. Retain a secure backup of the original key: changing it breaks updates for existing installations. Never put the private key in source, release assets, or logs.
+2. Bump the versions required by `AGENTS.md`, update this README and `docs/RELEASE_NOTES.md`, and commit the lockfiles. Keep automated commit attribution set to `Clearlist contributors <noreply@clearlist.invalid>`.
+3. Run **Actions → Windows release → Run workflow** from `main`, or push the matching `vX.Y.Z` tag. Windows runners compile both targets using locked dependencies and produce signed installers.
+4. After both builds succeed, the publishing job verifies both signatures against the embedded public key, creates a draft release, uploads the installers, signatures, checksums, and `latest.json`, then publishes it as latest. An already-published version cannot be overwritten; bump the version for a new release.
+
+The feed is [latest.json](https://github.com/Varchas-Varma/ClearList-Public/releases/latest/download/latest.json). Release downloads are permanent until explicitly removed, unlike expiring Actions artifacts. Keep this repository and its releases public so every installed copy can update without credentials. Build/signing jobs run on release tags or explicit dispatch, not pull requests.
 
 The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `index.html`. The Rust package name controls the executable basename. Changing the bundle identifier changes the data-directory location and requires updating the reset script. Keep the published identifier unchanged when releasing updates. The original icon is `src-tauri/icons/source.svg`; regenerate its platform sizes with `npm run tauri icon src-tauri/icons/source.svg`.
 
@@ -154,7 +167,7 @@ Click the sidebar's collapse/expand button to switch between the full sidebar an
 
 Open **Settings → Hotkeys**, find an action, click its current shortcut or **Unassigned**, and press the desired key combination. **Clear** removes an assignment. **Reset hotkeys** restores the defaults below. Conflicting assignments are rejected and identify the existing action; clear that action first to reuse the combination. Escape cancels recording and Tab leaves it.
 
-All 46 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
+All 47 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
 
 The task footer and task-action menus display your current bindings. Task/list actions operate on the focused task or current task/list. Protected default-list actions remain unavailable. Reassigning an existing shortcut removes its old binding; Escape remains available as a cancel key.
 

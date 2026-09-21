@@ -10,3 +10,5 @@ coverage/
 *.db-wal
 .env*
 .DS_Store
+*.key
+*.key.pub

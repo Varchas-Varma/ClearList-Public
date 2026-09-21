@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 export const useUi = create<{
   settingsOpen: boolean;
-  settingsTab: 'appearance' | 'hotkeys';
+  settingsTab: 'appearance' | 'hotkeys' | 'updates';
   editingListId: string | null;
   deletingListId: string | null;
-  openSettings(tab?: 'appearance' | 'hotkeys'): void;
+  openSettings(tab?: 'appearance' | 'hotkeys' | 'updates'): void;
   deleteTaskId: string | null;
   moveTaskId: string | null;
   requestDelete(id: string | null): void;

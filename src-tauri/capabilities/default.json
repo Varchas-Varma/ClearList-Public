@@ -3,5 +3,5 @@
   "identifier": "main-window",
   "description": "Local window and shutdown after pending writes are flushed.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-destroy"]
+  "permissions": ["core:default", "core:window:allow-destroy", "updater:default"]
 }

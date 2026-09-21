@@ -13,6 +13,7 @@ import { useUi } from './state/ui';
 import { usePreferences } from './settings/preferences';
 import { useTheme } from './hooks/useTheme';
 import { TaskDialogs } from './components/TaskDialogs';
+import { UpdateNotice } from './components/Updates';
 export default function App() {
   const loaded = useApp((s) => s.loaded),
     loading = useApp((s) => s.loading),
@@ -94,6 +95,7 @@ export default function App() {
       </div>
       <TaskDialogs />
       {settingsOpen && <SettingsPanel palette={palette} />}
+      <UpdateNotice />
     </div>
   );
 }

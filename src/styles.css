@@ -1021,3 +1021,25 @@ ul {
     gap: 5px;
   }
 }
+
+.update-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.update-bar > span {
+  flex: 1;
+}
+.update-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 200px;
+  overflow: auto;
+  font: inherit;
+}
+.modal progress {
+  width: 100%;
+}

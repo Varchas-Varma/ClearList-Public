@@ -8,6 +8,7 @@ import { usePreferences } from '../settings/preferences';
 import { runCommand, revealTask } from '../settings/actions';
 import { children } from '../tree';
 import { clipboardImages, validateClipboardImage } from '../services/clipboard';
+import { updateInProgress } from '../state/updater';
 export function editable(target: EventTarget | null): boolean {
   return (
     target instanceof Element && !!target.closest('input,textarea,select,[contenteditable="true"]')
@@ -117,7 +118,7 @@ export function useDesktop() {
       void getCurrentWindow()
         .onCloseRequested(async (e) => {
           e.preventDefault();
-          if (closing) return;
+          if (closing || updateInProgress()) return;
           closing = true;
           const failures = appStore.getState().writeFailures;
           (document.activeElement as HTMLElement | null)?.blur();

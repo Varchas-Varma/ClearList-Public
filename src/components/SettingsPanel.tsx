@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Palette as PaletteIcon, Keyboard } from 'lucide-react';
+import { Palette as PaletteIcon, Keyboard, Download } from 'lucide-react';
 import { useUi } from '../state/ui';
 import { usePreferences } from '../settings/preferences';
 import { commands, keyBinding, keyLabel, type CommandId } from '../settings/shortcuts';
 import type { Palette } from '../settings/colours';
 import { ColourPicker } from './ColourPicker';
 import { Modal } from './Modal';
+import { UpdatesPanel } from './Updates';
+const tabs = ['appearance', 'hotkeys', 'updates'] as const;
 export function SettingsPanel({ palette }: { palette: Palette }) {
   const tab = useUi((s) => s.settingsTab),
     hotkeys = usePreferences((s) => s.hotkeys),
@@ -21,7 +23,7 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
     <Modal title="Settings" wide onClose={() => useUi.setState({ settingsOpen: false })}>
       <div className="settings-panel">
         <div className="settings-tabs" role="tablist" aria-label="Settings sections">
-          {(['appearance', 'hotkeys'] as const).map((id) => (
+          {tabs.map((id) => (
             <button
               type="button"
               key={id}
@@ -38,15 +40,29 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
               onKeyDown={(e) => {
                 if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
                   e.preventDefault();
-                  const next = tab === 'appearance' ? 'hotkeys' : 'appearance';
+                  const next =
+                    e.key === 'Home'
+                      ? tabs[0]
+                      : e.key === 'End'
+                        ? tabs[tabs.length - 1]
+                        : tabs[
+                            (tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) %
+                              tabs.length
+                          ];
                   useUi.setState({ settingsTab: next });
                   setRecording(null);
                   requestAnimationFrame(() => document.getElementById(`tab-${next}`)?.focus());
                 }
               }}
             >
-              {id === 'appearance' ? <PaletteIcon size={17} /> : <Keyboard size={17} />}{' '}
-              {id === 'appearance' ? 'Appearance' : 'Hotkeys'}
+              {id === 'appearance' ? (
+                <PaletteIcon size={17} />
+              ) : id === 'hotkeys' ? (
+                <Keyboard size={17} />
+              ) : (
+                <Download size={17} />
+              )}{' '}
+              {id === 'appearance' ? 'Appearance' : id === 'hotkeys' ? 'Hotkeys' : 'Updates'}
             </button>
           ))}
         </div>
@@ -106,6 +122,8 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
               </button>
             </div>
           </div>
+        ) : tab === 'updates' ? (
+          <UpdatesPanel />
         ) : (
           <div id="panel-hotkeys" role="tabpanel" aria-labelledby="tab-hotkeys">
             <p className="settings-intro">

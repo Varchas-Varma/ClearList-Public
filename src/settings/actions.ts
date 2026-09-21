@@ -5,6 +5,7 @@ import { usePreferences } from './preferences';
 import { reorder } from '../dnd/actions';
 import { siblings } from '../tree';
 import type { CommandId } from './shortcuts';
+import { checkForUpdates } from '../state/updater';
 
 function nextFrame(action: () => void) {
   requestAnimationFrame(action);
@@ -50,6 +51,10 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
       break;
     case 'settings':
       useUi.getState().openSettings();
+      break;
+    case 'checkUpdates':
+      useUi.getState().openSettings('updates');
+      void checkForUpdates();
       break;
     case 'toggleSidebar':
       usePreferences.getState().toggleSidebar();

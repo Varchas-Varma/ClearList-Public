@@ -3,6 +3,7 @@ export const commands = [
   { id: 'search', label: 'Jump to task search', group: 'App', scope: 'global', key: 'Ctrl+F' },
   { id: 'newList', label: 'Jump to New list', group: 'App', scope: 'global', key: 'Ctrl+Shift+N' },
   { id: 'settings', label: 'Open settings', group: 'App', scope: 'global', key: null },
+  { id: 'checkUpdates', label: 'Check for updates', group: 'App', scope: 'global', key: null },
   {
     id: 'toggleSidebar',
     label: 'Collapse / expand sidebar',

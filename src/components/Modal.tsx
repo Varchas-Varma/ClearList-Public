@@ -6,11 +6,13 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  canClose = true,
 }: {
   title: string;
   children: ReactNode;
   onClose(): void;
   wide?: boolean;
+  canClose?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null),
     close = useRef(onClose);
@@ -48,7 +50,13 @@ export function Modal({
     >
       <header className="modal-header">
         <h2>{title}</h2>
-        <button type="button" className="icon-button" aria-label="Close dialog" onClick={onClose}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Close dialog"
+          disabled={!canClose}
+          onClick={onClose}
+        >
           <X size={18} />
         </button>
       </header>
