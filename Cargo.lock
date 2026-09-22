@@ -491,6 +491,7 @@ name = "clearlist"
 version = "0.1.3"
 dependencies = [
  "clearlist-core",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",

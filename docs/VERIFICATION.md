@@ -2,7 +2,7 @@
 
 ## 0.1.3 — 21 September 2026
 
-The production frontend build passes with the updater dependency and strict TypeScript checks. The Windows release workflow performs the required native compilation and NSIS packaging for x64 and ARM64, then verifies both update signatures before publishing the complete release feed. Actual native build and publication outcomes are recorded in GitHub Actions. No additional app test suites were run for this release. Interactive Windows installation/restart and a later-version in-app upgrade have not been manually verified. The application identifier, data location, preferences key, and database schema are unchanged.
+The production frontend build passes with the updater dependency and strict TypeScript checks. The first native build exposed a missing direct `serde_json` dependency in the desktop host; this was added for Tauri’s generated updater configuration. The Windows release workflow performs the required native compilation and NSIS packaging for x64 and ARM64, then verifies both update signatures before publishing the complete release feed. Actual native build and publication outcomes are recorded in GitHub Actions. No additional app test suites were run for this release. Interactive Windows installation/restart and a later-version in-app upgrade have not been manually verified. The application identifier, data location, preferences key, and database schema are unchanged.
 
 ## 0.1.2 — 20 September 2026
 

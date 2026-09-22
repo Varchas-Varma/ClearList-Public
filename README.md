@@ -13,7 +13,7 @@ Windows 10/11 are supported on these two architectures. Close Clearlist and run 
 
 Version 0.1.3 checks for updates on launch and adds **Settings → Updates**, download progress, and an installation/restart confirmation. It saves pending edits before invoking the installer. A new **Check for updates** shortcut is initially unassigned. Settings, customizable colours, collapsible sidebar, visible subtasks, drag hierarchy moves, and keyboard navigation from 0.1.1–0.1.2 remain available.
 
-Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The release workflow builds both architectures and publishes only after both signed installers are ready.
+Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The release workflow builds both architectures and publishes only after both signed installers are ready. The desktop host includes the JSON dependency required by the updater configuration.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 
