@@ -1,5 +1,11 @@
 # Verification record
 
+## 0.1.4 — 22 September 2026
+
+The production frontend build and strict TypeScript checks pass. Seven focused React checks pass: range selection growth/shrinkage, group subtask creation/completion/nesting/deletion, modifier click and typing protection, ordered note/image summaries, hotkey reassignment and completed-section collapse, both purge statuses with descendant/data preservation, and the two existing keyboard hierarchy scenarios. This is a targeted check of changed behavior, not a full regression run.
+
+The Windows release workflow compiles and signs x64 and ARM64 installers. Before packaging, its x64 job runs two native batch checks: rollback after a later invalid move, and preservation of a rescued descendant’s notes/images after purge and database reopen. Native test, build, and publication outcomes are recorded in GitHub Actions. Live Windows and Parallels installation/use have not been manually verified. The database schema, application identifier, saved-data location, and updater signing identity are unchanged.
+
 ## 0.1.3 — 21 September 2026
 
 The production frontend build passes with the updater dependency and strict TypeScript checks. The first native build exposed a missing direct `serde_json` dependency in the desktop host; this was added for Tauri’s generated updater configuration. The Windows release workflow performs the required native compilation and NSIS packaging for x64 and ARM64, then verifies both update signatures before publishing the complete release feed. Actual native build and publication outcomes are recorded in GitHub Actions. No additional app test suites were run for this release. Interactive Windows installation/restart and a later-version in-app upgrade have not been manually verified. The application identifier, data location, preferences key, and database schema are unchanged.

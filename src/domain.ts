@@ -53,6 +53,7 @@ export const emptySnapshot = (): Snapshot => ({
   warning: null,
 });
 export type Mutation =
+  | { kind: 'batch'; changes: Mutation[] }
   | { kind: 'createList'; id: string; name: string }
   | { kind: 'renameList'; id: string; name: string }
   | { kind: 'deleteList'; id: string }

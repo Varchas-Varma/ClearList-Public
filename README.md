@@ -1,4 +1,4 @@
-# Clearlist 0.1.3
+# Clearlist 0.1.4
 
 A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. Task data stays local, with no accounts, cloud sync, calendars, reminders, or telemetry. Optional installation of signed updates uses public GitHub Releases. The layout follows familiar list-management conventions with original styling and icons.
 
@@ -6,12 +6,12 @@ A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible 
 
 Download the installer for your PC from [the latest release](https://github.com/Varchas-Varma/ClearList-Public/releases/latest):
 
-- **Intel/AMD (x64):** `Clearlist_0.1.3_x64-setup.exe`
-- **Windows on ARM (ARM64):** `Clearlist_0.1.3_arm64-setup.exe`
+- **Intel/AMD (x64):** `Clearlist_0.1.4_x64-setup.exe`
+- **Windows on ARM (ARM64):** `Clearlist_0.1.4_arm64-setup.exe`
 
 Windows 10/11 are supported on these two architectures. Close Clearlist and run the installer over the existing installation. Lists, notes, images, and settings are retained. Version 0.1.2 and earlier need this one final manual installation on each PC to enable future in-app updates. No GitHub account is required.
 
-Version 0.1.3 checks for updates on launch and adds **Settings → Updates**, download progress, and an installation/restart confirmation. It saves pending edits before invoking the installer. A new **Check for updates** shortcut is initially unassigned. Settings, customizable colours, collapsible sidebar, visible subtasks, drag hierarchy moves, and keyboard navigation from 0.1.1–0.1.2 remain available.
+Version 0.1.4 adds background-relative hover highlights, Ctrl multi-selection, batch task actions, combined notes/image summaries, and separate completed/incomplete purge buttons. **Settings → Hotkeys** includes the completed-section toggle and all new actions. The selection modifier defaults to **Ctrl**; other new commands are **Unassigned**. Existing 0.1.3 installations can install this release through **Settings → Updates** or the launch update notice. Pending edits are saved before installation; existing lists, notes, images, settings, and the signing key are retained.
 
 Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The release workflow builds both architectures and publishes only after both signed installers are ready. The desktop host includes the JSON dependency required by the updater configuration.
 
@@ -151,6 +151,18 @@ The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `inde
 - **Preview and deletion:** Click a thumbnail for a larger in-app preview. Missing files show Image unavailable with Retry. Image, task, and list deletion require confirmation; task/list confirmation explains dependent data removal.
 - **Search:** Case-insensitive matching across task titles, steps and notes in all lists, with the originating list shown. No advanced filters or query syntax.
 
+### Multi-selection and cleanup (0.1.4)
+
+Use the selection square shown when hovering or focusing a task, or **Ctrl+click** a task title, to add or remove individual tasks. From a hovered or keyboard-focused task, hold **Ctrl** and use **Up/Down** to extend or shrink a contiguous range of visible tasks; **Ctrl+Home/End** extends to the first/last visible task. Text fields retain their normal editing shortcuts. The selection modifier can be reassigned to Ctrl, Shift, or Alt in Settings, or cleared. **Select all visible** and **Clear selection** buttons appear with the selection count.
+
+After selecting, release the modifier. Drag any selected task, or press **Enter** and use the existing gap/subtask keyboard controls, to move the group in its current order. Parents carry their descendants only once, even when both are selected. Existing Delete, Space, Insert, F2, duplication, importance, move-to-list, promotion, and move-up/down actions apply to the selected group when invoked from a selected row or the combined details panel. Space completes the selection unless every selected task is already complete, in which case it uncompletes them. **Complete all** and **Uncomplete all** are also explicit buttons. Adding a subtask creates one copy of the entered title under each selected task. Renaming applies the entered title to every selected task. Completion changes only explicitly selected tasks. Moving between active/completed sections preserves each task’s completion status.
+
+The combined details panel lists selected tasks and their descendants in tree order, showing the first line of each note and all attached images, without duplicate entries. Its summary section scrolls independently for large selections. A single-task details panel also includes notes/image summaries for its subtasks. Clicking a summary title opens that task for editing. Pasting an image while a group is selected attaches a copy to every selected task; image preview/deletion still targets the individual image.
+
+**Purge completed tasks** and **Purge incomplete tasks** affect only the current list, including nested tasks, after a confirmation showing the count and list name. Only tasks matching the requested completion status are deleted. Opposite-status subtasks, their notes, and their images survive and are promoted to their nearest surviving parent. Other lists are untouched. Ordinary **Delete selection** removes selected branches and their descendants. Group moves, completion, renaming, subtask creation, and deletion commit in one database transaction; a rejected operation rolls back the batch.
+
+The completed-section toggle, both purge actions, select/deselect task, select-all-visible, clear-selection, complete-selection, and uncomplete-selection commands are available in Settings with no assigned shortcut. The selection modifier starts at Ctrl. Existing assignments are retained except Ctrl+Up/Down/Home/End, which are reserved for range selection and become unassigned on upgrade if previously used for another action.
+
 ### Settings and colours (0.1.2)
 
 Open **Settings** using the gear at the bottom of the sidebar. It stays available when the sidebar is collapsed.
@@ -161,38 +173,43 @@ Open **Settings** using the gear at the bottom of the sidebar. It stays availabl
 
 Each control has a complete hue/saturation wheel, keyboard-accessible hue/saturation/brightness sliders, and a hex field accepting `#RGB` or `#RRGGBB` (the `#` is optional). Press Enter or leave the field to apply a hex value. Invalid values show an error and retain the previous colour. Changes preview immediately and save automatically; text and border colours are derived for readability. **Reset colours to system theme** restores automatic light/dark colours.
 
+Hover highlights use one translucent white layer over the control’s existing background, including sidebar list rows and coloured buttons. This brightens any custom colour without replacing it with a fixed hover colour; pure white is already at maximum brightness. Text and icons retain their colour.
+
 Click the sidebar's collapse/expand button to switch between the full sidebar and a compact rail. The rail keeps search, New list, and Settings available. Search and new-list shortcuts automatically expand the sidebar. The collapsed state persists between launches.
 
 ### Reassigning hotkeys (0.1.2)
 
 Open **Settings → Hotkeys**, find an action, click its current shortcut or **Unassigned**, and press the desired key combination. **Clear** removes an assignment. **Reset hotkeys** restores the defaults below. Conflicting assignments are rejected and identify the existing action; clear that action first to reuse the combination. Escape cancels recording and Tab leaves it.
 
-All 47 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
+All 55 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
 
-The task footer and task-action menus display your current bindings. Task/list actions operate on the focused task or current task/list. Protected default-list actions remain unavailable. Reassigning an existing shortcut removes its old binding; Escape remains available as a cancel key.
+The task footer and task-action menus display your current bindings. Task actions operate on the selection when invoked from a selected task, otherwise on the focused task; list actions operate on the current list. Protected default-list actions remain unavailable. Reassigning an existing shortcut removes its old binding; Escape remains available as a cancel key.
 
 Preferences save locally in the app's WebView storage, separate from the task database, and survive normal restarts and in-place updates using the same app identity. A manual copy of only `clearlist.db` does not include these preferences. This release does not change the task database schema.
 
 ### Default shortcuts
 
-| Shortcut              | Action                                                                           |
-| --------------------- | -------------------------------------------------------------------------------- |
-| Up / Down             | Browse siblings; from task entry, keep the draft and focus the last / first task |
-| Enter on a task       | Pick up the task; arrow keys then visit task rows and insertion gaps             |
-| Enter while moving    | Drop at the highlighted gap, or as a subtask of the highlighted task             |
-| Right / Left          | Enter subtasks / return to parent level, including while moving                  |
-| Escape                | Cancel a move/edit, or close details and return to task entry                    |
-| Home / End            | First / last sibling or drop position                                            |
-| F2                    | Rename focused task                                                              |
-| Delete                | Confirm removal of focused task and its subtree                                  |
-| Space                 | Complete / uncomplete focused task                                               |
-| Insert                | Add a subtask to focused task                                                    |
-| Ctrl+Enter            | Open task details                                                                |
-| Ctrl+D                | Duplicate focused task and its subtree                                           |
-| Ctrl+N / Ctrl+Shift+N | New task / new list                                                              |
-| Ctrl+F                | Search                                                                           |
-| Tab / Shift+Tab       | Next / previous control                                                          |
-| Enter in text entry   | Add item or save title                                                           |
+| Shortcut                      | Action                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| Ctrl+click / selection square | Add or remove a task from the selection                                          |
+| Ctrl+Up / Ctrl+Down           | Extend or shrink the visible task selection                                      |
+| Ctrl+Home / Ctrl+End          | Extend selection to the first / last visible task                                |
+| Up / Down                     | Browse siblings; from task entry, keep the draft and focus the last / first task |
+| Enter on a task               | Pick up the task; arrow keys then visit task rows and insertion gaps             |
+| Enter while moving            | Drop at the highlighted gap, or as a subtask of the highlighted task             |
+| Right / Left                  | Enter subtasks / return to parent level, including while moving                  |
+| Escape                        | Cancel a move/edit, or close details and return to task entry                    |
+| Home / End                    | First / last sibling or drop position                                            |
+| F2                            | Rename focused task or selected group                                            |
+| Delete                        | Confirm removal of focused task / selected branches                              |
+| Space                         | Complete / uncomplete selected tasks                                             |
+| Insert                        | Add a subtask to each selected task                                              |
+| Ctrl+Enter                    | Open task details                                                                |
+| Ctrl+D                        | Duplicate focused task and its subtree                                           |
+| Ctrl+N / Ctrl+Shift+N         | New task / new list                                                              |
+| Ctrl+F                        | Search                                                                           |
+| Tab / Shift+Tab               | Next / previous control                                                          |
+| Enter in text entry           | Add item or save title                                                           |
 
 ### Saved ordering
 

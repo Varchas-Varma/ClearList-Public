@@ -5,6 +5,7 @@ export const useTreeUi = create<{
   draggingId: string | null;
   target: Target | null;
   editingId: string | null;
+  hoveredId: string | null;
   collapsed: Record<string, boolean>;
   completedOpen: boolean;
   setMoving(id: string | null, target?: Target | null): void;
@@ -17,6 +18,7 @@ export const useTreeUi = create<{
   draggingId: null,
   target: null,
   editingId: null,
+  hoveredId: null,
   collapsed: {},
   completedOpen: true,
   setMoving: (movingId, target = null) => set({ movingId, target }),

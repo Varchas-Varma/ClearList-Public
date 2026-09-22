@@ -9,6 +9,7 @@ import { runCommand, revealTask } from '../settings/actions';
 import { children } from '../tree';
 import { clipboardImages, validateClipboardImage } from '../services/clipboard';
 import { updateInProgress } from '../state/updater';
+import { handleRangeSelection, selectionFor } from '../state/selection';
 export function editable(target: EventTarget | null): boolean {
   return (
     target instanceof Element && !!target.closest('input,textarea,select,[contenteditable="true"]')
@@ -24,6 +25,7 @@ export function useDesktop() {
         document.querySelector('[role="menu"]')
       )
         return;
+      if (handleRangeSelection(e)) return;
       const command = commandFor(e, usePreferences.getState().hotkeys);
       const element = e.target instanceof Element ? e.target : null;
       const typing = editable(e.target);
@@ -85,7 +87,10 @@ export function useDesktop() {
       if (e.repeat && !['moveTaskUp', 'moveTaskDown', 'previousList', 'nextList'].includes(command))
         return;
       e.preventDefault();
-      const row = element?.closest<HTMLElement>('[data-task-id]')?.dataset.taskId;
+      const row =
+        element?.closest<HTMLElement>('[data-task-id]')?.dataset.taskId ??
+        useTreeUi.getState().hoveredId ??
+        undefined;
       runCommand(command, useTreeUi.getState().movingId ?? row, element);
     }
 
@@ -99,7 +104,7 @@ export function useDesktop() {
       for (const file of files) {
         const error = validateClipboardImage(file);
         if (error) appStore.getState().setError(error);
-        else void appStore.getState().attach(id, file);
+        else for (const taskId of selectionFor(id)) void appStore.getState().attach(taskId, file);
       }
     }
     function unload(e: BeforeUnloadEvent) {

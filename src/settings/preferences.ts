@@ -36,6 +36,14 @@ export function readPreferences(raw: string | null): Preferences {
       for (const c of commands)
         if (parsed.hotkeys[c.id] === null || typeof parsed.hotkeys[c.id] === 'string')
           keys[c.id] = parsed.hotkeys[c.id];
+      // Give the new selection modifier its default without resetting unrelated custom bindings.
+      if (parsed.hotkeys.selectionModifier === undefined) {
+        for (const c of commands)
+          if (
+            ['Ctrl+ArrowUp', 'Ctrl+ArrowDown', 'Ctrl+Home', 'Ctrl+End'].includes(keys[c.id] ?? '')
+          )
+            keys[c.id] = null;
+      }
       if (commands.every((c) => keys[c.id] === null || !shortcutError(c.id, keys[c.id]!, keys)))
         defaults.hotkeys = keys;
     }

@@ -3,7 +3,16 @@ import { useUi } from '../state/ui';
 import { focusTarget, useTreeUi } from '../state/treeUi';
 import { usePreferences } from './preferences';
 import { reorder } from '../dnd/actions';
-import { siblings } from '../tree';
+import { rootSelection } from '../tree';
+import {
+  batch,
+  completeSelection,
+  moveSelectionBy,
+  selectionFor,
+  toggleSelection,
+  updateSelection,
+  visibleTaskIds,
+} from '../state/selection';
 import type { CommandId } from './shortcuts';
 import { checkForUpdates } from '../state/updater';
 
@@ -29,11 +38,12 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
     { data, mutate } = state;
   const id = taskId ?? useTreeUi.getState().movingId ?? state.selectedTaskId;
   const task = data.tasks.find((t) => t.id === id);
+  const ids = selectionFor(id);
   const list = data.lists.find((l) => l.id === state.selectedListId);
   useTreeUi.getState().setMoving(null);
   function details(focus: string) {
     if (!task) return;
-    state.selectTask(task.id);
+    if (!ids.includes(task.id) || ids.length < 2) state.selectTask(task.id);
     nextFrame(() => document.getElementById(focus)?.focus());
   }
   switch (command) {
@@ -76,8 +86,26 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
       state.setSearch('');
       nextFrame(() => document.getElementById('new-task')?.focus());
       break;
-    case 'toggleCompleted':
-      useTreeUi.setState({ completedOpen: !useTreeUi.getState().completedOpen });
+    case 'toggleCompleted': {
+      const completedOpen = !useTreeUi.getState().completedOpen;
+      const focusHidden = !completedOpen && document.activeElement?.closest('.completed-section');
+      useTreeUi.setState({ completedOpen });
+      if (focusHidden) nextFrame(() => runCommand('focusTasks'));
+      break;
+    }
+    case 'purgeCompleted':
+    case 'purgeIncomplete':
+      if (list)
+        useUi.setState({ purge: { listId: list.id, completed: command === 'purgeCompleted' } });
+      break;
+    case 'toggleSelection':
+      if (task) toggleSelection(task.id);
+      break;
+    case 'selectAllTasks':
+      state.selectTasks(visibleTaskIds());
+      break;
+    case 'clearSelection':
+      state.selectTask(null);
       break;
     case 'expandAll':
       useTreeUi.setState({ collapsed: {} });
@@ -146,7 +174,7 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
       details('task-notes');
       break;
     case 'newSubtask':
-      if (task) useTreeUi.getState().expand(task.id);
+      ids.forEach((id) => useTreeUi.getState().expand(id));
       details('new-subtask');
       break;
     case 'focusImages':
@@ -156,7 +184,7 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
     case 'deleteImage': {
       if (!task) break;
       const tile = target?.closest<HTMLElement>('[data-attachment-id]');
-      state.selectTask(task.id);
+      if (ids.length < 2) state.selectTask(task.id);
       nextFrame(() => {
         const current =
           tile ?? document.querySelector<HTMLElement>('#task-detail [data-attachment-id]');
@@ -170,6 +198,10 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
     }
     case 'renameTask':
       if (!task) break;
+      if (ids.length > 1) {
+        useUi.setState({ renameTaskIds: ids });
+        break;
+      }
       if (target?.closest('#task-detail'))
         document.querySelector<HTMLButtonElement>('#task-detail .detail-title-text')?.click();
       else {
@@ -181,36 +213,52 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
       if (task) useUi.getState().requestDelete(task.id);
       break;
     case 'completeTask':
+    case 'markCompleted':
+    case 'markIncomplete':
       if (task) {
-        useTreeUi.setState({ completedOpen: true });
-        void mutate({ kind: 'completeTask', id: task.id, completed: !task.isCompleted }).then(
-          () => {
-            revealTask(task.id);
-            focusTarget({ kind: 'row', id: task.id });
-          },
-        );
+        const completed =
+          command === 'markCompleted' ||
+          (command === 'completeTask' &&
+            !ids.every((id) => data.tasks.find((t) => t.id === id)?.isCompleted));
+        void completeSelection(task.id, completed).then(() => {
+          revealTask(task.id);
+          focusTarget({ kind: 'row', id: task.id });
+        });
       }
       break;
     case 'importantTask':
-      if (task) void mutate({ kind: 'updateTask', id: task.id, important: !task.isImportant });
+      if (task)
+        void updateSelection(task.id, {
+          important: !ids.every((id) => data.tasks.find((t) => t.id === id)?.isImportant),
+        });
       break;
     case 'moveToList':
       if (task) useUi.getState().requestMove(task.id);
       break;
     case 'promoteTask':
       if (task)
-        void mutate({
-          kind: 'placeTask',
-          id: task.id,
-          listId: task.listId,
-          parentId: null,
-          beforeId: null,
-        }).then((ok) => {
+        void batch(
+          rootSelection(data.tasks, ids).map((t) => ({
+            kind: 'placeTask',
+            id: t.id,
+            listId: t.listId,
+            parentId: null,
+            beforeId: null,
+          })),
+        ).then((ok) => {
           if (ok) focusTarget({ kind: 'row', id: task.id });
         });
       break;
     case 'toggleSubtasks':
-      if (task) useTreeUi.getState().toggle(task.id);
+      if (task) {
+        const collapsed = !useTreeUi.getState().collapsed[task.id];
+        useTreeUi.setState({
+          collapsed: {
+            ...useTreeUi.getState().collapsed,
+            ...Object.fromEntries(ids.map((id) => [id, collapsed])),
+          },
+        });
+      }
       break;
     case 'taskMenu':
       if (task) {
@@ -226,31 +274,23 @@ export function runCommand(command: CommandId, taskId?: string, target?: Element
     case 'moveTaskUp':
     case 'moveTaskDown': {
       if (!task || state.search.trim()) break;
-      const group = siblings(data.tasks, task.listId, task.parentId, task.isCompleted),
-        index = group.findIndex((t) => t.id === task.id),
-        other = group[index + (command === 'moveTaskUp' ? -1 : 1)];
-      if (other)
-        reorder(
-          {
-            kind: 'task',
-            id: task.id,
-            label: task.title,
-            listId: task.listId,
-            completed: task.isCompleted,
-          },
-          other.id,
-        );
+      void moveSelectionBy(task.id, command === 'moveTaskUp' ? -1 : 1);
       break;
     }
     case 'duplicateTask':
       if (task)
         void (async () => {
           if (!(await notes.flushAll())) return;
-          const newId = crypto.randomUUID();
-          if (await mutate({ kind: 'duplicateTask', id: task.id, newId })) {
-            state.selectTask(newId);
-            revealTask(newId);
-            focusTarget({ kind: 'row', id: newId });
+          const copies: string[] = [];
+          for (const root of rootSelection(data.tasks, ids)) {
+            const newId = crypto.randomUUID();
+            if (!(await mutate({ kind: 'duplicateTask', id: root.id, newId }))) break;
+            copies.push(newId);
+          }
+          if (copies.length) {
+            state.selectTasks(copies);
+            copies.forEach(revealTask);
+            focusTarget({ kind: 'row', id: copies[0] });
           }
         })();
       break;

@@ -93,8 +93,13 @@ impl Database {
         if let Mutation::DuplicateTask { id, new_id } = mutation {
             return self.duplicate(&id, &new_id);
         }
+        let changes = match mutation {
+            Mutation::Batch { changes } => changes,
+            other => vec![other],
+        };
         let tx = self.conn.transaction()?;
-        match mutation {
+        for mutation in changes {
+          match mutation {
             Mutation::CreateList { id, name } => {
                 valid_id(&id)?;
                 tx.execute("INSERT INTO lists(id,name,position) VALUES(?1,?2,(SELECT COUNT(*) FROM lists))",params![id,title(&name)?])?;
@@ -223,7 +228,10 @@ impl Database {
             Mutation::DeleteAttachment { id } => {
                 changed(tx.execute("DELETE FROM attachments WHERE id=?1", [id])?)?;
             }
-            Mutation::DuplicateTask { .. } => unreachable!(),
+            Mutation::Batch { .. } | Mutation::DuplicateTask { .. } => {
+                return Err(Error::Invalid("This action cannot be included in a task batch.".into()));
+            }
+          }
         }
         tx.commit()?;
         self.snapshot_with_cleanup()

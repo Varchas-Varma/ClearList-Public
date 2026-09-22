@@ -5,7 +5,7 @@ import { repository } from '../services/repository';
 import { appStore, useApp } from '../state/app';
 import { Modal } from './Modal';
 import { Confirm } from './Confirm';
-function AttachmentTile({ attachment }: { attachment: Attachment }) {
+export function AttachmentTile({ attachment }: { attachment: Attachment }) {
   const [url, setUrl] = useState<string | null>(null),
     [failed, setFailed] = useState(false),
     [attempt, setAttempt] = useState(0),

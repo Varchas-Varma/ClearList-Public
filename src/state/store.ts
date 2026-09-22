@@ -11,6 +11,8 @@ export interface AppState {
   error: string | null;
   selectedListId: string | null;
   selectedTaskId: string | null;
+  selectedTaskIds: string[];
+  selectionAnchorId: string | null;
   search: string;
   load(): Promise<void>;
   mutate(change: Mutation): Promise<boolean>;
@@ -18,6 +20,7 @@ export interface AppState {
   drain(): Promise<void>;
   selectList(id: string): void;
   selectTask(id: string | null): void;
+  selectTasks(ids: string[], anchorId?: string | null): void;
   setSearch(value: string): void;
   setError(value: string | null): void;
 }
@@ -38,9 +41,16 @@ export function createAppStore(repo: Repository) {
       for (const job of queue) if (job.change) data = optimistic(data, job.change);
       const state = get(),
         selected = data.tasks.find((t) => t.id === state.selectedTaskId);
+      const selectedTaskIds = state.selectedTaskIds.filter((id) =>
+        data.tasks.some((t) => t.id === id),
+      );
       set({
         data,
-        selectedTaskId: selected?.id ?? null,
+        selectedTaskId: selected?.id ?? selectedTaskIds[0] ?? null,
+        selectedTaskIds,
+        selectionAnchorId: data.tasks.some((t) => t.id === state.selectionAnchorId)
+          ? state.selectionAnchorId
+          : null,
         selectedListId:
           selected?.listId ??
           (data.lists.some((l) => l.id === state.selectedListId)
@@ -98,6 +108,8 @@ export function createAppStore(repo: Repository) {
       error: null,
       selectedListId: null,
       selectedTaskId: null,
+      selectedTaskIds: [],
+      selectionAnchorId: null,
       search: '',
       load: () => {
         if (loadPromise) return loadPromise;
@@ -120,10 +132,19 @@ export function createAppStore(repo: Repository) {
       attach: (id, file) => enqueue(() => repo.attach(id, file)),
       drain: () =>
         running || queue.length ? new Promise<void>((r) => waiters.push(r)) : Promise.resolve(),
-      selectList: (id) => set({ selectedListId: id, selectedTaskId: null, search: '' }),
+      selectList: (id) =>
+        set({
+          selectedListId: id,
+          selectedTaskId: null,
+          selectedTaskIds: [],
+          selectionAnchorId: null,
+          search: '',
+        }),
       selectTask: (id) =>
         set({
           selectedTaskId: id,
+          selectedTaskIds: id ? [id] : [],
+          selectionAnchorId: id,
           ...(id
             ? {
                 selectedListId:
@@ -131,7 +152,20 @@ export function createAppStore(repo: Repository) {
               }
             : {}),
         }),
-      setSearch: (search) => set({ search }),
+      selectTasks: (ids, anchorId) => {
+        const selectedTaskIds = [...new Set(ids)].filter((id) =>
+          get().data.tasks.some((t) => t.id === id),
+        );
+        const first = get().data.tasks.find((t) => t.id === selectedTaskIds[0]);
+        set({
+          selectedTaskIds,
+          selectedTaskId: first?.id ?? null,
+          selectionAnchorId: anchorId ?? selectedTaskIds[0] ?? null,
+          ...(first ? { selectedListId: first.listId } : {}),
+        });
+      },
+      setSearch: (search) =>
+        set({ search, selectedTaskId: null, selectedTaskIds: [], selectionAnchorId: null }),
       setError: (error) => set({ error }),
     };
   });

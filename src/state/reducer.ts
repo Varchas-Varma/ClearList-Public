@@ -1,6 +1,7 @@
 import { cleanTitle, type Mutation, type Snapshot, taskOrder } from '../domain';
 import { branchIds } from '../tree';
 export function optimistic(data: Snapshot, change: Mutation): Snapshot {
+  if (change.kind === 'batch') return change.changes.reduce(optimistic, data);
   const next = structuredClone(data),
     now = new Date().toISOString(),
     stamp = { createdAt: now, updatedAt: now };

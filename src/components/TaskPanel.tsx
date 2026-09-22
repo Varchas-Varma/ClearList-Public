@@ -6,7 +6,9 @@ import type { DragItem } from '../dnd/actions';
 import { appStore, useApp } from '../state/app';
 import { useTreeUi } from '../state/treeUi';
 import { useTaskNavigation } from '../hooks/useTaskNavigation';
-import { canPlace, targetKey, type Place } from '../tree';
+import { canPlaceMany, targetKey, type Place } from '../tree';
+import { selectionFor } from '../state/selection';
+import { runCommand } from '../settings/actions';
 import { usePreferences } from '../settings/preferences';
 import { keyLabel } from '../settings/shortcuts';
 import { useUi } from '../state/ui';
@@ -16,6 +18,7 @@ function Gap({ place }: { place: Place }) {
   const movingId = useTreeUi((s) => s.movingId ?? s.draggingId);
   const target = useTreeUi((s) => s.target);
   const tasks = useApp((s) => s.data.tasks);
+  const selectedTaskIds = useApp((s) => s.selectedTaskIds);
   const key = targetKey({ kind: 'gap', ...place });
   const drop = useDroppable({
     id: key,
@@ -25,7 +28,13 @@ function Gap({ place }: { place: Place }) {
       label: place.parentId ? 'Subtask position' : 'Task position',
       ...place,
     } satisfies DragItem,
-    disabled: !movingId || !canPlace(tasks, movingId, place),
+    disabled:
+      !movingId ||
+      !canPlaceMany(
+        tasks,
+        selectedTaskIds.includes(movingId) ? selectedTaskIds : [movingId],
+        place,
+      ),
   });
   const selected = !!movingId && target?.kind === 'gap' && targetKey(target) === key;
   return (
@@ -115,6 +124,7 @@ export function TaskPanel() {
   const completedOpen = useTreeUi((s) => s.completedOpen);
   const setCompletedOpen = (completedOpen: boolean) => useTreeUi.setState({ completedOpen });
   const hotkeys = usePreferences((s) => s.hotkeys);
+  const selectionCount = useApp((s) => s.selectedTaskIds.length);
   const movingId = useTreeUi((s) => s.movingId ?? s.draggingId),
     target = useTreeUi((s) => s.target);
   const results = useMemo(() => searchTasks(data, search), [data, search]);
@@ -158,6 +168,45 @@ export function TaskPanel() {
             ? `${results.length} results across all lists`
             : `${active.length} ${active.length === 1 ? 'task' : 'tasks'}`}
         </p>
+        {!isSearch && list && (
+          <div className="purge-actions">
+            <button
+              type="button"
+              className="text-button"
+              disabled={!data.tasks.some((t) => t.listId === list.id && t.isCompleted)}
+              onClick={() => runCommand('purgeCompleted')}
+            >
+              Purge completed tasks
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={!data.tasks.some((t) => t.listId === list.id && !t.isCompleted)}
+              onClick={() => runCommand('purgeIncomplete')}
+            >
+              Purge incomplete tasks
+            </button>
+          </div>
+        )}
+        {selectionCount > 0 && (
+          <div className="selection-toolbar" role="toolbar" aria-label="Task selection">
+            <span role="status">{selectionCount} selected</span>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => runCommand('selectAllTasks')}
+            >
+              Select all visible
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => runCommand('clearSelection')}
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
       </header>
       <div className="task-scroll" aria-busy={query !== search}>
         {isSearch ? (
@@ -218,8 +267,8 @@ export function TaskPanel() {
         <div className="task-entry">
           <p id="task-keyboard-help" className="keyboard-hint" role="status">
             {moving
-              ? `Moving “${moving.title}” · ${keyLabel(hotkeys.pickMove)}: ${targetTask ? `subtask of “${targetTask.title}”` : 'drop here'} · ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)}: position · ${keyLabel(hotkeys.enterSubtasks)}: subtasks · ${keyLabel(hotkeys.leaveSubtasks)}: parent · ${keyLabel(hotkeys.cancel)}: cancel`
-              : ` ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)} Browse · ${keyLabel(hotkeys.pickMove)} Move · ${keyLabel(hotkeys.renameTask)} Rename · ${keyLabel(hotkeys.newTask)} Add task`}
+              ? `Moving ${selectionFor(moving.id).length > 1 ? `${selectionFor(moving.id).length} tasks` : `“${moving.title}”`} · ${keyLabel(hotkeys.pickMove)}: ${targetTask ? `subtask of “${targetTask.title}”` : 'drop here'} · ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)}: position · ${keyLabel(hotkeys.enterSubtasks)}: subtasks · ${keyLabel(hotkeys.leaveSubtasks)}: parent · ${keyLabel(hotkeys.cancel)}: cancel`
+              : ` ${keyLabel(hotkeys.previousItem)}/${keyLabel(hotkeys.nextItem)} Browse · ${keyLabel(hotkeys.selectionModifier)}+↑/↓ Select range · ${keyLabel(hotkeys.pickMove)} Move · ${keyLabel(hotkeys.renameTask)} Rename · ${keyLabel(hotkeys.newTask)} Add task`}
           </p>
           <AddField
             key={list.id}

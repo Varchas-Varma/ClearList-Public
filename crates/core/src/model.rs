@@ -63,6 +63,9 @@ pub struct Snapshot {
     rename_all_fields = "camelCase"
 )]
 pub enum Mutation {
+    Batch {
+        changes: Vec<Mutation>,
+    },
     CreateList {
         id: String,
         name: String,

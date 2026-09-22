@@ -161,7 +161,7 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
                   : 'Changes save automatically. Duplicate assignments are rejected.')}
             </p>
             <div className="shortcut-list">
-              {['App', 'Navigation', 'Tasks', 'Lists', 'Images'].map((group) => {
+              {['App', 'Selection', 'Navigation', 'Tasks', 'Lists', 'Images'].map((group) => {
                 const rows = visible.filter((c) => c.group === group);
                 if (!rows.length) return null;
                 return (
@@ -196,7 +196,15 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
                               return;
                             }
                             if (e.nativeEvent.isComposing || e.repeat) return;
-                            const binding = keyBinding(e);
+                            const binding =
+                              command.id === 'selectionModifier'
+                                ? ((
+                                    { Control: 'Ctrl', Shift: 'Shift', Alt: 'Alt' } as Record<
+                                      string,
+                                      string
+                                    >
+                                  )[e.key] ?? keyBinding(e))
+                                : keyBinding(e);
                             if (!binding) return;
                             const result = usePreferences.getState().assign(command.id, binding);
                             setError(result ?? '');

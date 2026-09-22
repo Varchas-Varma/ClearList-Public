@@ -39,8 +39,13 @@ export function targetKey(target: Target): string {
     ? `row:${target.id}`
     : `gap:${target.parentId ?? 'root'}:${target.beforeId ?? 'end'}:${String(target.completed)}`;
 }
-export function moveTargets(tasks: Task[], source: Task, parentId: string | null): Target[] {
-  const excluded = branchIds(tasks, source.id);
+export function moveTargets(
+  tasks: Task[],
+  source: Task,
+  parentId: string | null,
+  ids = [source.id],
+): Target[] {
+  const excluded = branches(tasks, ids);
   const rows = siblings(tasks, source.listId, parentId, source.isCompleted).filter(
     (t) => !excluded.has(t.id),
   );
@@ -62,4 +67,50 @@ export function canPlace(tasks: Task[], sourceId: string, place: Place): boolean
   if (!source || (place.completed !== null && source.isCompleted !== place.completed)) return false;
   const branch = branchIds(tasks, sourceId);
   return !branch.has(place.parentId ?? '') && !branch.has(place.beforeId ?? '');
+}
+
+export function orderedTasks(
+  tasks: Task[],
+  listIds = [...new Set(tasks.map((t) => t.listId))],
+): Task[] {
+  const result: Task[] = [];
+  const seen = new Set<string>();
+  function visit(task: Task) {
+    if (seen.has(task.id)) return;
+    seen.add(task.id);
+    result.push(task);
+    children(tasks, task.id).forEach(visit);
+  }
+  listIds.forEach((id) => siblings(tasks, id, null).forEach(visit));
+  return result;
+}
+export function rootSelection(tasks: Task[], ids: string[]): Task[] {
+  const selected = new Set(ids);
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  return orderedTasks(tasks).filter((t) => {
+    if (!selected.has(t.id)) return false;
+    let parent = t.parentId;
+    const seen = new Set<string>();
+    while (parent && !seen.has(parent)) {
+      if (selected.has(parent)) return false;
+      seen.add(parent);
+      parent = byId.get(parent)?.parentId ?? null;
+    }
+    return true;
+  });
+}
+export function branches(tasks: Task[], ids: string[]): Set<string> {
+  const result = new Set<string>();
+  for (const id of ids) for (const child of branchIds(tasks, id)) result.add(child);
+  return result;
+}
+export function canPlaceMany(tasks: Task[], ids: string[], place: Place): boolean {
+  const roots = rootSelection(tasks, ids);
+  if (!roots.length) return false;
+  const excluded = branches(tasks, ids);
+  return (
+    !excluded.has(place.parentId ?? '') &&
+    !excluded.has(place.beforeId ?? '') &&
+    (place.completed === null || roots.some((t) => t.isCompleted === place.completed))
+  );
 }

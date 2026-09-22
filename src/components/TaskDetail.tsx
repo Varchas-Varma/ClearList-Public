@@ -2,13 +2,16 @@ import { useEffect } from 'react';
 import { useStore } from 'zustand';
 import { ArrowRightLeft, Star, Trash2, X } from 'lucide-react';
 import type { Task } from '../domain';
-import { appStore, notes } from '../state/app';
+import { appStore, notes, useApp } from '../state/app';
 import { useUi } from '../state/ui';
 import { Attachments } from './Attachments';
 import { EditableText } from './EditableText';
 import { Steps } from './Steps';
+import { TaskSummaries } from './SelectionDetail';
 export function TaskDetail({ task }: { task: Task }) {
   const draft = useStore(notes.store, (s) => s.drafts[task.id]);
+  const tasks = useApp((s) => s.data.tasks);
+  const childIds = tasks.filter((t) => t.parentId === task.id).map((t) => t.id);
   useEffect(
     () => () => {
       void notes.flush(task.id);
@@ -101,6 +104,7 @@ export function TaskDetail({ task }: { task: Task }) {
           )}
         </section>
         <Attachments taskId={task.id} />
+        {childIds.length > 0 && <TaskSummaries ids={childIds} label="Subtask notes and images" />}
       </div>
       <footer className="detail-footer">
         <button

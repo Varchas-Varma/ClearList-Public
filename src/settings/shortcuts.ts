@@ -16,7 +16,7 @@ export const commands = [
   { id: 'clearSearch', label: 'Clear search', group: 'App', scope: 'global', key: null },
   {
     id: 'toggleCompleted',
-    label: 'Show / hide completed tasks',
+    label: 'Collapse / expand completed tasks',
     group: 'App',
     scope: 'global',
     key: null,
@@ -24,6 +24,62 @@ export const commands = [
   { id: 'expandAll', label: 'Expand all subtasks', group: 'App', scope: 'global', key: null },
   { id: 'collapseAll', label: 'Collapse all subtasks', group: 'App', scope: 'global', key: null },
   { id: 'saveNotes', label: 'Save pending notes now', group: 'App', scope: 'global', key: null },
+  {
+    id: 'purgeCompleted',
+    label: 'Purge completed tasks in current list',
+    group: 'Lists',
+    scope: 'global',
+    key: null,
+  },
+  {
+    id: 'purgeIncomplete',
+    label: 'Purge incomplete tasks in current list',
+    group: 'Lists',
+    scope: 'global',
+    key: null,
+  },
+  {
+    id: 'selectionModifier',
+    label: 'Hold to extend task selection',
+    group: 'Selection',
+    scope: 'modifier',
+    key: 'Ctrl',
+  },
+  {
+    id: 'toggleSelection',
+    label: 'Select / deselect hovered task',
+    group: 'Selection',
+    scope: 'task',
+    key: null,
+  },
+  {
+    id: 'selectAllTasks',
+    label: 'Select all visible tasks',
+    group: 'Selection',
+    scope: 'global',
+    key: null,
+  },
+  {
+    id: 'clearSelection',
+    label: 'Clear task selection',
+    group: 'Selection',
+    scope: 'global',
+    key: null,
+  },
+  {
+    id: 'markCompleted',
+    label: 'Complete selected tasks',
+    group: 'Selection',
+    scope: 'task',
+    key: null,
+  },
+  {
+    id: 'markIncomplete',
+    label: 'Uncomplete selected tasks',
+    group: 'Selection',
+    scope: 'task',
+    key: null,
+  },
   {
     id: 'previousItem',
     label: 'Previous task / move position',
@@ -197,6 +253,29 @@ export function commandFor(e: KeyEvent, hotkeys: Hotkeys): CommandId | undefined
   return key ? commands.find((c) => hotkeys[c.id] === key)?.id : undefined;
 }
 export function shortcutError(id: CommandId, binding: string, hotkeys: Hotkeys): string | null {
+  if (id === 'selectionModifier') {
+    if (!['Ctrl', 'Shift', 'Alt'].includes(binding))
+      return 'Choose Ctrl, Shift, or Alt on its own for the selection modifier.';
+    if (
+      commands.some(
+        (c) =>
+          c.id !== id &&
+          ['ArrowUp', 'ArrowDown', 'Home', 'End'].some(
+            (key) => hotkeys[c.id] === `${binding}+${key}`,
+          ),
+      )
+    )
+      return 'Clear the shortcuts using this modifier with Up, Down, Home, or End first.';
+    return null;
+  }
+  if (['Ctrl', 'Shift', 'Alt'].includes(binding))
+    return 'Use a key or combination for this action.';
+  if (
+    ['ArrowUp', 'ArrowDown', 'Home', 'End'].some(
+      (key) => binding === `${hotkeys.selectionModifier}+${key}`,
+    )
+  )
+    return 'That combination extends the task selection. Change the selection modifier first.';
   const parts = binding.split('+');
   if (
     parts.includes('Tab') ||
@@ -211,6 +290,21 @@ export function shortcutError(id: CommandId, binding: string, hotkeys: Hotkeys):
     return 'Keep this shortcut available for text editing and pasting images.';
   const other = commands.find((c) => c.id !== id && hotkeys[c.id] === binding);
   return other ? `Already assigned to “${other.label}”. Clear that assignment first.` : null;
+}
+export function selectionHeld(
+  e: Pick<KeyEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'>,
+  hotkeys: Hotkeys,
+): boolean {
+  return (
+    !e.metaKey &&
+    (hotkeys.selectionModifier === 'Ctrl'
+      ? e.ctrlKey && !e.altKey && !e.shiftKey
+      : hotkeys.selectionModifier === 'Shift'
+        ? e.shiftKey && !e.ctrlKey && !e.altKey
+        : hotkeys.selectionModifier === 'Alt'
+          ? e.altKey && !e.ctrlKey && !e.shiftKey
+          : false)
+  );
 }
 export function keyLabel(binding: string | null | undefined): string {
   return (

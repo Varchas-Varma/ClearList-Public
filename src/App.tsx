@@ -8,6 +8,7 @@ import { useDesktop } from './hooks/useDesktop';
 import { Sidebar } from './components/Sidebar';
 import { TaskPanel } from './components/TaskPanel';
 import { TaskDetail } from './components/TaskDetail';
+import { SelectionDetail } from './components/SelectionDetail';
 import { SettingsPanel } from './components/SettingsPanel';
 import { useUi } from './state/ui';
 import { usePreferences } from './settings/preferences';
@@ -28,6 +29,7 @@ export default function App() {
   const collapsed = usePreferences((s) => s.sidebarCollapsed);
   const preferencesError = usePreferences((s) => s.saveError);
   const settingsOpen = useUi((s) => s.settingsOpen);
+  const selectionCount = useApp((s) => s.selectedTaskIds.length);
   useDesktop();
   useEffect(() => {
     if (isTauri()) void appStore.getState().load();
@@ -87,7 +89,11 @@ export default function App() {
         >
           <Sidebar />
           <TaskPanel />
-          {task && <TaskDetail key={task.id} task={task} />}
+          {selectionCount > 1 ? (
+            <SelectionDetail />
+          ) : (
+            task && <TaskDetail key={task.id} task={task} />
+          )}
         </div>
       </DragProvider>
       <div className="app-status" role="status" aria-live="polite">
