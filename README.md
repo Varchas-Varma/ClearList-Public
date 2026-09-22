@@ -1,19 +1,22 @@
 # Clearlist 0.1.4
 
-A small, local Windows desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. Task data stays local, with no accounts, cloud sync, calendars, reminders, or telemetry. Optional installation of signed updates uses public GitHub Releases. The layout follows familiar list-management conventions with original styling and icons.
+A small, local Windows and macOS desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. Task data stays local, with no accounts, cloud sync, calendars, reminders, or telemetry. Optional installation of signed updates uses public GitHub Releases. The layout follows familiar list-management conventions with original styling and icons.
 
 ## Quick start
 
-Download the installer for your PC from [the latest release](https://github.com/Varchas-Varma/ClearList-Public/releases/latest):
+Download the installer for your computer from [the latest release](https://github.com/Varchas-Varma/ClearList-Public/releases/latest):
 
 - **Intel/AMD (x64):** `Clearlist_0.1.4_x64-setup.exe`
 - **Windows on ARM (ARM64):** `Clearlist_0.1.4_arm64-setup.exe`
+- **macOS (Apple Silicon and Intel, universal):** [Clearlist_0.1.4_universal.dmg](https://github.com/Varchas-Varma/ClearList-Public/releases/download/v0.1.4/Clearlist_0.1.4_universal.dmg)
 
 Windows 10/11 are supported on these two architectures. Close Clearlist and run the installer over the existing installation. Lists, notes, images, and settings are retained. Version 0.1.2 and earlier need this one final manual installation on each PC to enable future in-app updates. No GitHub account is required.
 
+**Mac installation:** Requires macOS 13.3 or later. Open the DMG, drag **Clearlist** into **Applications**, eject the disk image, then launch it from Applications. The bundle is ad-hoc signed and is not Apple-notarized. On the first launch, macOS may block it; open **System Settings → Privacy & Security → Open Anyway**, then confirm Open. See [Apple’s instructions](https://support.apple.com/102445). Future releases install through **Settings → Updates**. Run the installed copy, not the copy inside the DMG. No Windows virtual machine is required.
+
 Version 0.1.4 adds background-relative hover highlights, Ctrl multi-selection, batch task actions, combined notes/image summaries, and separate completed/incomplete purge buttons. **Settings → Hotkeys** includes the completed-section toggle and all new actions. The selection modifier defaults to **Ctrl**; other new commands are **Unassigned**. Existing 0.1.3 installations can install this release through **Settings → Updates** or the launch update notice. Pending edits are saved before installation; existing lists, notes, images, settings, and the signing key are retained.
 
-Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The release workflow builds both architectures and publishes only after both signed installers are ready. The desktop host includes the JSON dependency required by the updater configuration.
+Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The Desktop release workflow builds both Windows architectures and a universal macOS bundle, and publishes after all artifacts and update signatures are ready. macOS updater signatures use the existing application key; they are separate from Apple Developer ID signing/notarization, which is not configured. The desktop host includes the JSON dependency required by the updater configuration.
 
 Install the Windows prerequisites below, extract the project, then open the **clearlist** folder in VS Code. Run commands from the folder containing `package.json` and `Cargo.toml`:
 
@@ -96,6 +99,19 @@ Use native Windows PowerShell and the Rust **MSVC** toolchain. A WSL build targe
 
 These steps follow the [Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows) and [Windows packaging documentation](https://v2.tauri.app/distribute/windows-installer/).
 
+## macOS development
+
+Install the Xcode Command Line Tools (`xcode-select --install`), Node.js 24, and stable Rust via rustup. Open this repository in VS Code and run `npm ci` followed by `npm run tauri dev`. macOS uses its built-in WKWebView. The deployment minimum is macOS 13.3 to match the bundled frontend’s modern Safari target.
+
+For a local universal DMG without the production updater key:
+
+```sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npm run tauri build -- --target universal-apple-darwin --bundles app,dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
+```
+
+The installer appears under `target/universal-apple-darwin/release/bundle/dmg`. App shortcuts retain their documented Ctrl defaults and can be reassigned in Settings, including to Command (shown as Meta). For range selection, choose Shift or Alt/Option if macOS reserves Ctrl+arrow keys. Use the selection squares if Control-click opens the native context menu. Standard Command+C/V text and image paste are supported by the native webview. Compact Mac keyboards can reassign Insert/Delete actions to convenient combinations.
+
 ## Development and verification commands
 
 | Command                                                       | Purpose                                                          |
@@ -120,7 +136,7 @@ VS Code Terminal → Run Task exposes development, release, and test commands. C
 
 `npm run dev` alone serves frontend assets. It does not supply SQLite or implement a browser edition; use `npm run tauri dev` for the real application.
 
-## Windows artifacts and app updates
+## Desktop artifacts and app updates
 
 Because this is a Cargo workspace, artifacts are written to the root **target** directory. A build with `--target x86_64-pc-windows-msvc` writes the executable and installer under `target\x86_64-pc-windows-msvc\release`; ARM64 uses `aarch64-pc-windows-msvc`. NSIS installers and `.sig` update signatures are in `bundle\nsis` below that directory. A build without `--target` uses `target\release`.
 
@@ -132,8 +148,10 @@ On launch, Clearlist checks the public release feed with a 15-second timeout. An
 
 1. Keep the generated private signing key in the repository's encrypted Actions secret **TAURI_SIGNING_PRIVATE_KEY**. The matching public key is in `src-tauri/tauri.conf.json`. Retain a secure backup of the original key: changing it breaks updates for existing installations. Never put the private key in source, release assets, or logs.
 2. Bump the versions required by `AGENTS.md`, update this README and `docs/RELEASE_NOTES.md`, and commit the lockfiles. Keep automated commit attribution set to `Clearlist contributors <noreply@clearlist.invalid>`.
-3. Run **Actions → Windows release → Run workflow** from `main`, or push the matching `vX.Y.Z` tag. Windows runners compile both targets using locked dependencies and produce signed installers.
-4. After both builds succeed, the publishing job verifies both signatures against the embedded public key, creates a draft release, uploads the installers, signatures, checksums, and `latest.json`, then publishes it as latest. An already-published version cannot be overwritten; bump the version for a new release.
+3. Run **Actions → Desktop release → Run workflow** from `main`, or push the matching `vX.Y.Z` tag. Windows runners compile both targets; the reusable macOS job builds a universal app and DMG with locked dependencies.
+4. After all builds succeed, the publishing job verifies the Windows and macOS update signatures against the embedded public key, creates a draft release, uploads the installers, update bundles, signatures, checksums, and `latest.json`, then publishes it as latest. Both `darwin-aarch64` and `darwin-x86_64` use the universal update archive. An already-published installer cannot be overwritten; bump the version for a new release.
+
+**Actions → macOS installer → Run workflow** adds macOS downloads to the current published version without rebuilding Windows. This was introduced for 0.1.4. It verifies the universal Mach-O architectures, ad-hoc bundle signature, DMG integrity, and updater signature before adding downloads. It merges the updater feed and checksums while preserving Windows entries, and refuses to replace different published installers. For subsequent releases, use Desktop release to publish all platforms together.
 
 The feed is [latest.json](https://github.com/Varchas-Varma/ClearList-Public/releases/latest/download/latest.json). Release downloads are permanent until explicitly removed, unlike expiring Actions artifacts. Keep this repository and its releases public so every installed copy can update without credentials. Build/signing jobs run on release tags or explicit dispatch, not pull requests.
 
@@ -286,7 +304,7 @@ Select compatible versions using `npm install package-name@version` or `npm inst
 - Missing image: restore its file from backup or delete its metadata using the app. Duplication fails visibly if it cannot copy an original image.
 - Linux native build: Tauri requires WebKitGTK 4.1 and other Linux development packages. `cargo test` for the core and frontend checks do not require a desktop WebView.
 
-See `docs/VERIFICATION.md` for actual command results and remaining native Windows checks. This project uses the MIT license; dependencies retain their own licenses.
+See `docs/VERIFICATION.md` for actual command results and remaining native desktop checks. This project uses the MIT license; dependencies retain their own licenses.
 
 ## Release maintenance
 

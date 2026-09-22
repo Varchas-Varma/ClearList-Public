@@ -1,0 +1,82 @@
+name: macOS installer
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: '1'
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-universal
+          cache-on-failure: true
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Check release version and signing configuration
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          node scripts/release-version.mjs
+      - name: Build universal macOS installer and signed update
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        run: npm run tauri build -- --target universal-apple-darwin --bundles app,dmg -- --locked
+      - name: Verify app bundle and prepare downloads
+        run: |
+          version=$(node -p "require('./package.json').version")
+          bundle=target/universal-apple-darwin/release/bundle
+          codesign --verify --deep --strict "$bundle/macos/Clearlist.app"
+          lipo "$bundle/macos/Clearlist.app/Contents/MacOS/clearlist" -verify_arch arm64 x86_64
+          hdiutil verify "$bundle/dmg/Clearlist_${version}_universal.dmg"
+          mkdir release-assets
+          cp "$bundle/dmg/Clearlist_${version}_universal.dmg" release-assets/
+          cp "$bundle/macos/Clearlist.app.tar.gz" "release-assets/Clearlist_${version}_universal.app.tar.gz"
+          cp "$bundle/macos/Clearlist.app.tar.gz.sig" "release-assets/Clearlist_${version}_universal.app.tar.gz.sig"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Clearlist-macos-universal
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.workflow == 'macOS installer' && github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v8
+        with:
+          name: Clearlist-macos-universal
+          path: release-assets
+      - name: Add macOS downloads to the current release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-macos.mjs

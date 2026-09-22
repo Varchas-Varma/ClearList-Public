@@ -1,5 +1,9 @@
 # Verification record
 
+## macOS packaging — 0.1.4
+
+The macOS workflow builds both aarch64 and x86_64 into one universal app, verifies the two Mach-O architectures and ad-hoc code signature, and checks DMG integrity. Publication verifies the updater archive signature against the existing application key before adding macOS entries to the feed. Actual native build and publication outcomes are recorded in GitHub Actions. Interactive macOS launch, first-run Gatekeeper approval, and installation of a later update have not been manually tested. No additional application test suites are required for these packaging-only changes.
+
 ## 0.1.4 — 22 September 2026
 
 The production frontend build and strict TypeScript checks pass. Seven focused React checks pass: range selection growth/shrinkage, group subtask creation/completion/nesting/deletion, modifier click and typing protection, ordered note/image summaries, hotkey reassignment and completed-section collapse, both purge statuses with descendant/data preservation, and the two existing keyboard hierarchy scenarios. This is a targeted check of changed behavior, not a full regression run.

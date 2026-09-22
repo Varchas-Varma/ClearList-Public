@@ -1,4 +1,4 @@
-name: Windows release
+name: Desktop release
 
 on:
   workflow_dispatch:
@@ -9,10 +9,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-release
+  group: desktop-release
   cancel-in-progress: false
 
 jobs:
+  macos:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/macos-installer.yml
+    secrets: inherit
+
   build:
     strategy:
       fail-fast: false
@@ -72,7 +78,7 @@ jobs:
           retention-days: 14
 
   publish:
-    needs: build
+    needs: [build, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -87,6 +93,10 @@ jobs:
           pattern: Clearlist-0.1.4-windows-*
           path: release-assets
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: Clearlist-macos-universal
+          path: release-assets
       - name: Prepare and publish complete release
         env:
           GH_TOKEN: ${{ github.token }}

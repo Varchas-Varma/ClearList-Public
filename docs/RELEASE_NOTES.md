@@ -9,3 +9,7 @@
 - Saves group moves and destructive changes atomically. Existing task data, preferences, and update signing identity are preserved.
 
 From 0.1.3, use Settings → Updates or accept the update notice. Older installations need one manual installation over the existing app. Choose x64 for Intel/AMD Windows, or ARM64 for Windows on ARM, including an ARM Windows virtual machine. Updates verify signatures before installation. Windows Authenticode signing is not configured, so an initial installer may show an unknown-publisher warning.
+
+## macOS installer
+
+A universal DMG is now available for Apple Silicon and Intel Macs running macOS 13.3 or later. Open the DMG and drag Clearlist to Applications. The app is ad-hoc signed, not Apple-notarized; first launch may require System Settings → Privacy & Security → Open Anyway. Future updates use Settings → Updates with verified update signatures. Existing Windows downloads and data are unchanged. Both platforms are included in future Desktop release builds.
