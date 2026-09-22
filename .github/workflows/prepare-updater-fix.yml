@@ -1,0 +1,25 @@
+name: Prepare updater build fix
+on:
+  push:
+    branches: [prepare-updater-build-fix]
+    paths: ['.github/workflows/prepare-updater-fix.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create build fix with project attribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          const response = await fetch('https://api.github.com/repos/' + process.env.GITHUB_REPOSITORY + '/git/commits', {
+            method: 'POST',
+            headers: {Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'},
+            body: JSON.stringify({"message":"Fix native updater build by declaring serde_json dependency","tree":"bb3725d781cf7dd06131f67b172acfea6192f322","parents":["4df572a192f931608912f654a5ea89e47b30d47b"],"author":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-22T04:06:38+00:00"},"committer":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-22T04:06:38+00:00"}})
+          });
+          if (!response.ok) throw new Error('Commit creation failed: ' + response.status + ' ' + await response.text());
+          console.log('Prepared build fix: ' + (await response.json()).sha);
+          NODE
