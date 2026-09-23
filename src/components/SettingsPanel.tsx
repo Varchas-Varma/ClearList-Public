@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Palette as PaletteIcon, Keyboard, Download } from 'lucide-react';
 import { useUi } from '../state/ui';
 import { usePreferences } from '../settings/preferences';
@@ -19,6 +19,46 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
   const visible = commands.filter((c) =>
     `${c.label} ${c.group} ${keyLabel(hotkeys[c.id])}`.toLowerCase().includes(filter.toLowerCase()),
   );
+  useEffect(() => {
+    if (!recording || tab !== 'hotkeys') return;
+    function capture(e: KeyboardEvent) {
+      if (e.key === 'Tab') {
+        setRecording(null);
+        setError('');
+        return;
+      }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.key === 'Escape') {
+        setRecording(null);
+        setError('');
+        return;
+      }
+      if (e.isComposing || e.repeat) return;
+      const binding =
+        recording === 'selectionModifier'
+          ? ((
+              { Control: 'Ctrl', Shift: 'Shift', Alt: 'Alt', Meta: 'Meta' } as Record<
+                string,
+                string
+              >
+            )[e.key] ?? keyBinding(e))
+          : keyBinding(e);
+      if (!binding) return;
+      const result = usePreferences.getState().assign(recording!, binding);
+      setError(result ?? '');
+      if (!result) setRecording(null);
+    }
+    const cancel = () => setRecording(null);
+    // WKWebView does not focus mouse-clicked buttons automatically. Capture while
+    // recording as well as explicitly focusing the button that starts recording.
+    window.addEventListener('keydown', capture, true);
+    window.addEventListener('blur', cancel);
+    return () => {
+      window.removeEventListener('keydown', capture, true);
+      window.removeEventListener('blur', cancel);
+    };
+  }, [recording, tab]);
   return (
     <Modal title="Settings" wide onClose={() => useUi.setState({ settingsOpen: false })}>
       <div className="settings-panel">
@@ -160,6 +200,17 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
                   ? 'Press a key combination. Escape cancels; Tab leaves recording.'
                   : 'Changes save automatically. Duplicate assignments are rejected.')}
             </p>
+            {recording && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRecording(null);
+                  setError('');
+                }}
+              >
+                Cancel recording
+              </button>
+            )}
             <div className="shortcut-list">
               {['App', 'Selection', 'Navigation', 'Tasks', 'Lists', 'Images'].map((group) => {
                 const rows = visible.filter((c) => c.group === group);
@@ -175,40 +226,13 @@ export function SettingsPanel({ palette }: { palette: Palette }) {
                           className={`shortcut-binding ${recording === command.id ? 'recording' : ''}`}
                           aria-label={`Shortcut for ${command.label}`}
                           aria-pressed={recording === command.id}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.currentTarget.focus();
                             setRecording(command.id);
                             setError('');
                           }}
                           onBlur={() => {
                             if (recording === command.id) setRecording(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (recording !== command.id) return;
-                            if (e.key === 'Tab') {
-                              setRecording(null);
-                              return;
-                            }
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (e.key === 'Escape') {
-                              setRecording(null);
-                              setError('');
-                              return;
-                            }
-                            if (e.nativeEvent.isComposing || e.repeat) return;
-                            const binding =
-                              command.id === 'selectionModifier'
-                                ? ((
-                                    { Control: 'Ctrl', Shift: 'Shift', Alt: 'Alt' } as Record<
-                                      string,
-                                      string
-                                    >
-                                  )[e.key] ?? keyBinding(e))
-                                : keyBinding(e);
-                            if (!binding) return;
-                            const result = usePreferences.getState().assign(command.id, binding);
-                            setError(result ?? '');
-                            if (!result) setRecording(null);
                           }}
                         >
                           {recording === command.id ? 'Press keys…' : keyLabel(hotkeys[command.id])}

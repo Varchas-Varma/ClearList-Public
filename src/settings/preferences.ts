@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import { commands, defaultHotkeys, shortcutError, type CommandId, type Hotkeys } from './shortcuts';
+import {
+  commands,
+  defaultHotkeys,
+  isMacOS,
+  shortcutError,
+  type CommandId,
+  type Hotkeys,
+} from './shortcuts';
 import { hexColour, type Palette } from './colours';
 export const PREFERENCES_KEY = 'clearlist.preferences.v1';
 export interface Preferences {
@@ -40,9 +47,26 @@ export function readPreferences(raw: string | null): Preferences {
       if (parsed.hotkeys.selectionModifier === undefined) {
         for (const c of commands)
           if (
-            ['Ctrl+ArrowUp', 'Ctrl+ArrowDown', 'Ctrl+Home', 'Ctrl+End'].includes(keys[c.id] ?? '')
+            ['ArrowUp', 'ArrowDown', 'Home', 'End'].some(
+              (key) => keys[c.id] === `${keys.selectionModifier}+${key}`,
+            )
           )
             keys[c.id] = null;
+      }
+      // Older releases saved Windows defaults on every platform. Only migrate unchanged
+      // defaults, and leave custom/cleared bindings and conflicts under the user's control.
+      if (isMacOS() && parsed.hotkeyDefaultsVersion !== 2) {
+        const legacy = defaultHotkeys(false);
+        for (const c of commands) {
+          const next = defaults.hotkeys[c.id];
+          if (
+            legacy[c.id] !== null &&
+            keys[c.id] === legacy[c.id] &&
+            next &&
+            !shortcutError(c.id, next, keys)
+          )
+            keys[c.id] = next;
+        }
       }
       if (commands.every((c) => keys[c.id] === null || !shortcutError(c.id, keys[c.id]!, keys)))
         defaults.hotkeys = keys;
@@ -80,7 +104,10 @@ export const usePreferences = create<
       };
     let saveError = null;
     try {
-      localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ version: 1, ...next }));
+      localStorage.setItem(
+        PREFERENCES_KEY,
+        JSON.stringify({ version: 1, hotkeyDefaultsVersion: 2, ...next }),
+      );
     } catch {
       saveError =
         'Settings apply for this session, but could not be saved. Check available storage.';

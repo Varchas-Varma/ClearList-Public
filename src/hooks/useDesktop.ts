@@ -36,7 +36,7 @@ export function useDesktop() {
         element?.closest('#task-detail') &&
         element.tagName === 'INPUT' &&
         (element.id === 'new-subtask' || element.closest('.inline-editor')) &&
-        (!e.key || e.key.startsWith('Arrow') || e.ctrlKey || e.altKey)
+        (!e.key || e.key.startsWith('Arrow') || e.ctrlKey || e.altKey || e.metaKey)
       ) {
         const id = appStore.getState().selectedTaskId;
         if (id) {

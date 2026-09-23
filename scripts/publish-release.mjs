@@ -1,23 +1,27 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { version } from './release-version.mjs';
+import { version, releaseVersion } from './release-version.mjs';
 import { signedArtifact, macPlatforms, checksum } from './update-artifacts.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY;
 assert.ok(repo);
-const tag = `v${version}`;
+const tag = `v${releaseVersion}`;
 const dir = 'release-assets';
 const files = readdirSync(dir);
 const platforms = {
-  'windows-x86_64': signedArtifact(`Clearlist_${version}_x64-setup.exe`),
-  'windows-aarch64': signedArtifact(`Clearlist_${version}_arm64-setup.exe`),
+  'windows-x86_64': signedArtifact(`Clearlist_${releaseVersion}_x64-setup.exe`),
+  'windows-aarch64': signedArtifact(`Clearlist_${releaseVersion}_arm64-setup.exe`),
   ...macPlatforms(),
 };
 const notes = readFileSync('docs/RELEASE_NOTES.md', 'utf8');
 writeFileSync(
   `${dir}/latest.json`,
-  JSON.stringify({ version, notes, pub_date: new Date().toISOString(), platforms }, null, 2) + '\n',
+  JSON.stringify(
+    { version, releaseVersion, notes, pub_date: new Date().toISOString(), platforms },
+    null,
+    2,
+  ) + '\n',
 );
 writeFileSync(
   `${dir}/SHA256SUMS.txt`,
@@ -52,7 +56,7 @@ if (existing.status === 0) {
     '--target',
     process.env.GITHUB_SHA,
     '--title',
-    `Clearlist ${version}`,
+    `Clearlist ${releaseVersion}`,
     '--notes-file',
     'docs/RELEASE_NOTES.md',
   );

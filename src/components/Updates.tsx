@@ -1,5 +1,6 @@
 import {
   appVersion,
+  updateVersionLabel,
   checkForUpdates,
   checkOnLaunch,
   installUpdate,
@@ -20,15 +21,15 @@ export function UpdatesPanel() {
         restart.
       </p>
       <p className="muted">
-        Lists, notes, images, and settings stay on this PC. Checking for updates requires internet
-        access.
+        Lists, notes, images, and settings stay on this device. Checking for updates requires
+        internet access.
       </p>
       <p role={error ? 'alert' : 'status'} className={error ? 'field-error' : ''}>
         {error ||
           (phase === 'checking'
             ? 'Checking for updates…'
             : update
-              ? `Version ${update.version} is available.`
+              ? `Version ${updateVersionLabel(update)} is available.`
               : phase === 'current'
                 ? 'You have the latest version.'
                 : 'Ready to check for updates.')}
@@ -64,7 +65,7 @@ export function UpdateNotice() {
     <>
       {update && !dismissed && !confirmOpen && (
         <div className="update-bar" role="status">
-          <span>Clearlist {update.version} is available.</span>
+          <span>Clearlist {updateVersionLabel(update)} is available.</span>
           <button
             type="button"
             onClick={() => {
@@ -88,8 +89,8 @@ export function UpdateNotice() {
           }}
         >
           <p>
-            Install Clearlist {update.version}? Pending edits will be saved, then the app will
-            restart. Your lists and settings are kept.
+            Install Clearlist {updateVersionLabel(update)}? Pending edits will be saved, then the
+            app will restart. Your lists and settings are kept.
           </p>
           {busy && (
             <div role="status">

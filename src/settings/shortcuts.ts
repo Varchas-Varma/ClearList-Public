@@ -237,8 +237,22 @@ export const commands = [
 ] as const;
 export type CommandId = (typeof commands)[number]['id'];
 export type Hotkeys = Record<CommandId, string | null>;
-export const defaultHotkeys = () =>
-  Object.fromEntries(commands.map((c) => [c.id, c.key])) as Hotkeys;
+export const isMacOS = () => typeof navigator !== 'undefined' && /^Mac/.test(navigator.platform);
+export function defaultHotkeys(mac = isMacOS()): Hotkeys {
+  const keys = Object.fromEntries(
+    commands.map((c) => [c.id, mac ? (c.key?.replace('Ctrl', 'Meta') ?? null) : c.key]),
+  ) as Hotkeys;
+  if (mac)
+    Object.assign(keys, {
+      settings: 'Meta+,',
+      firstItem: 'Alt+ArrowUp',
+      lastItem: 'Alt+ArrowDown',
+      renameTask: 'Meta+R',
+      deleteTask: 'Meta+Backspace',
+      newSubtask: 'Meta+Shift+Enter',
+    });
+  return keys;
+}
 export type KeyEvent = Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>;
 export function keyBinding(e: KeyEvent): string | null {
   if (['Control', 'Alt', 'Shift', 'Meta', 'Dead', 'Unidentified', 'Process'].includes(e.key))
@@ -252,10 +266,17 @@ export function commandFor(e: KeyEvent, hotkeys: Hotkeys): CommandId | undefined
   const key = keyBinding(e);
   return key ? commands.find((c) => hotkeys[c.id] === key)?.id : undefined;
 }
-export function shortcutError(id: CommandId, binding: string, hotkeys: Hotkeys): string | null {
+export function shortcutError(
+  id: CommandId,
+  binding: string,
+  hotkeys: Hotkeys,
+  mac = isMacOS(),
+): string | null {
   if (id === 'selectionModifier') {
-    if (!['Ctrl', 'Shift', 'Alt'].includes(binding))
-      return 'Choose Ctrl, Shift, or Alt on its own for the selection modifier.';
+    if (!(mac ? ['Ctrl', 'Shift', 'Alt', 'Meta'] : ['Ctrl', 'Shift', 'Alt']).includes(binding))
+      return mac
+        ? 'Choose Cmd, Ctrl, Shift, or Option on its own for the selection modifier.'
+        : 'Choose Ctrl, Shift, or Alt on its own for the selection modifier.';
     if (
       commands.some(
         (c) =>
@@ -268,7 +289,7 @@ export function shortcutError(id: CommandId, binding: string, hotkeys: Hotkeys):
       return 'Clear the shortcuts using this modifier with Up, Down, Home, or End first.';
     return null;
   }
-  if (['Ctrl', 'Shift', 'Alt'].includes(binding))
+  if (['Ctrl', 'Shift', 'Alt', 'Meta'].includes(binding))
     return 'Use a key or combination for this action.';
   if (
     ['ArrowUp', 'ArrowDown', 'Home', 'End'].some(
@@ -279,13 +300,39 @@ export function shortcutError(id: CommandId, binding: string, hotkeys: Hotkeys):
   const parts = binding.split('+');
   if (
     parts.includes('Tab') ||
-    parts.includes('Meta') ||
-    ['Alt+F4', 'Ctrl+Alt+Delete'].includes(binding)
+    (!mac && parts.includes('Meta')) ||
+    ['Alt+F4', 'Ctrl+Alt+Delete'].includes(binding) ||
+    (mac &&
+      [
+        'Meta+Q',
+        'Meta+W',
+        'Meta+H',
+        'Meta+Alt+H',
+        'Meta+M',
+        'Meta+Space',
+        'Meta+Alt+Escape',
+        'Ctrl+Meta+Q',
+      ].includes(binding))
   )
-    return 'That combination is reserved for Windows or moving focus.';
+    return 'That combination is reserved for the operating system or moving focus.';
   if (binding === 'Escape' && id !== 'cancel') return 'Escape is reserved for cancelling.';
   if (
-    ['Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z'].includes(binding)
+    [
+      'Ctrl+A',
+      'Ctrl+C',
+      'Ctrl+V',
+      'Ctrl+X',
+      'Ctrl+Z',
+      'Ctrl+Y',
+      'Ctrl+Shift+Z',
+      'Meta+A',
+      'Meta+C',
+      'Meta+V',
+      'Meta+X',
+      'Meta+Z',
+      'Meta+Y',
+      'Meta+Shift+Z',
+    ].includes(binding)
   )
     return 'Keep this shortcut available for text editing and pasting images.';
   const other = commands.find((c) => c.id !== id && hotkeys[c.id] === binding);
@@ -295,18 +342,23 @@ export function selectionHeld(
   e: Pick<KeyEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'>,
   hotkeys: Hotkeys,
 ): boolean {
-  return (
-    !e.metaKey &&
-    (hotkeys.selectionModifier === 'Ctrl'
-      ? e.ctrlKey && !e.altKey && !e.shiftKey
-      : hotkeys.selectionModifier === 'Shift'
-        ? e.shiftKey && !e.ctrlKey && !e.altKey
-        : hotkeys.selectionModifier === 'Alt'
-          ? e.altKey && !e.ctrlKey && !e.shiftKey
-          : false)
-  );
+  return hotkeys.selectionModifier === 'Meta'
+    ? e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey
+    : !e.metaKey &&
+        (hotkeys.selectionModifier === 'Ctrl'
+          ? e.ctrlKey && !e.altKey && !e.shiftKey
+          : hotkeys.selectionModifier === 'Shift'
+            ? e.shiftKey && !e.ctrlKey && !e.altKey
+            : hotkeys.selectionModifier === 'Alt'
+              ? e.altKey && !e.ctrlKey && !e.shiftKey
+              : false);
 }
-export function keyLabel(binding: string | null | undefined): string {
+export function keyLabel(binding: string | null | undefined, mac = isMacOS()): string {
+  if (mac)
+    binding = binding
+      ?.replaceAll('Meta', 'Cmd')
+      .replaceAll('Alt', 'Option')
+      .replaceAll('Backspace', 'Delete');
   return (
     binding
       ?.replaceAll('ArrowUp', '↑')

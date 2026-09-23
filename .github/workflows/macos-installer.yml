@@ -45,14 +45,15 @@ jobs:
       - name: Verify app bundle and prepare downloads
         run: |
           version=$(node -p "require('./package.json').version")
+          release_version=$(node -p "require('./package.json').releaseVersion || require('./package.json').version")
           bundle=target/universal-apple-darwin/release/bundle
           codesign --verify --deep --strict "$bundle/macos/Clearlist.app"
           lipo "$bundle/macos/Clearlist.app/Contents/MacOS/clearlist" -verify_arch arm64 x86_64
           hdiutil verify "$bundle/dmg/Clearlist_${version}_universal.dmg"
           mkdir release-assets
-          cp "$bundle/dmg/Clearlist_${version}_universal.dmg" release-assets/
-          cp "$bundle/macos/Clearlist.app.tar.gz" "release-assets/Clearlist_${version}_universal.app.tar.gz"
-          cp "$bundle/macos/Clearlist.app.tar.gz.sig" "release-assets/Clearlist_${version}_universal.app.tar.gz.sig"
+          cp "$bundle/dmg/Clearlist_${version}_universal.dmg" "release-assets/Clearlist_${release_version}_universal.dmg"
+          cp "$bundle/macos/Clearlist.app.tar.gz" "release-assets/Clearlist_${release_version}_universal.app.tar.gz"
+          cp "$bundle/macos/Clearlist.app.tar.gz.sig" "release-assets/Clearlist_${release_version}_universal.app.tar.gz.sig"
       - uses: actions/upload-artifact@v7
         with:
           name: Clearlist-macos-universal

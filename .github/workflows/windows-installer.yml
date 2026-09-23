@@ -67,13 +67,23 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: npm run tauri build -- --target ${{ matrix.target }} --bundles nsis -- --locked
+      - name: Name release downloads
+        shell: pwsh
+        run: |
+          $package = Get-Content package.json | ConvertFrom-Json
+          $nativeVersion = $package.version
+          $releaseVersion = $package.releaseVersion
+          if (!$releaseVersion) { $releaseVersion = $nativeVersion }
+          New-Item -ItemType Directory -Path release-assets | Out-Null
+          $source = "target/${{ matrix.target }}/release/bundle/nsis/Clearlist_${nativeVersion}_${{ matrix.arch }}-setup.exe"
+          $destination = "release-assets/Clearlist_${releaseVersion}_${{ matrix.arch }}-setup.exe"
+          Copy-Item -LiteralPath $source -Destination $destination
+          Copy-Item -LiteralPath "$source.sig" -Destination "$destination.sig"
       - name: Upload installer and update signature
         uses: actions/upload-artifact@v7
         with:
-          name: Clearlist-0.1.4-windows-${{ matrix.arch }}
-          path: |
-            target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe
-            target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe.sig
+          name: Clearlist-0.1.4.1-windows-${{ matrix.arch }}
+          path: release-assets/*
           if-no-files-found: error
           retention-days: 14
 
@@ -90,7 +100,7 @@ jobs:
           node-version: '24'
       - uses: actions/download-artifact@v8
         with:
-          pattern: Clearlist-0.1.4-windows-*
+          pattern: Clearlist-0.1.4.1-windows-*
           path: release-assets
           merge-multiple: true
       - uses: actions/download-artifact@v8

@@ -1,5 +1,11 @@
 # Verification record
 
+## 0.1.4.1 — shortcut recording and Mac defaults
+
+The production frontend build and strict TypeScript checks pass. Fifteen focused checks pass across settings, platform shortcuts, and multi-selection. These cover recording without button focus, explicit focus, modifier-only input, Escape/Tab/button/window-blur cancellation, Command reassignment and persistence, Command range selection, Mac and Windows defaults, shortcut conflicts, protected text/OS commands, legacy preference migration, and preservation of custom/cleared bindings. Existing settings and selection checks also pass. No broad regression suite was run.
+
+The Desktop release workflow builds Windows x64/ARM64 and a universal macOS app. Its existing native checks verify batch safety, both Mac architectures, ad-hoc app signing, DMG integrity, and updater signatures before publication. Actual native build/publication results are recorded in GitHub Actions. Interactive WKWebView use and an in-place Mac update have not been manually verified. The application identifier, database schema, data locations, and signing key are unchanged.
+
 ## macOS packaging — 0.1.4
 
 The macOS workflow builds both aarch64 and x86_64 into one universal app, verifies the two Mach-O architectures and ad-hoc code signature, and checks DMG integrity. Publication verifies the updater archive signature against the existing application key before adding macOS entries to the feed. Actual native build and publication outcomes are recorded in GitHub Actions. Interactive macOS launch, first-run Gatekeeper approval, and installation of a later update have not been manually tested. No additional application test suites are required for these packaging-only changes.

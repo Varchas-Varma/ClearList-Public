@@ -1,10 +1,16 @@
 import { create } from 'zustand';
 import { isTauri } from '@tauri-apps/api/core';
 import { check, type Update } from '@tauri-apps/plugin-updater';
-import { version } from '../../package.json';
+import { releaseVersion } from '../../package.json';
 import { appStore, notes } from './app';
 
-export const appVersion = version;
+export const appVersion = releaseVersion;
+export function updateVersionLabel(update: Pick<Update, 'version' | 'rawJson'>): string {
+  const label = update.rawJson?.releaseVersion;
+  return typeof label === 'string' && /^\d+\.\d+\.\d+(?:\.\d+)?$/.test(label)
+    ? label
+    : update.version;
+}
 type Phase = 'idle' | 'checking' | 'available' | 'current' | 'downloading' | 'installing' | 'error';
 export const useUpdater = create<{
   phase: Phase;
@@ -38,7 +44,7 @@ export async function checkForUpdates() {
   if (!isTauri()) {
     useUpdater.setState({
       phase: 'error',
-      error: 'Updates are available in the Windows desktop app.',
+      error: 'Updates are available in the desktop app.',
     });
     return;
   }

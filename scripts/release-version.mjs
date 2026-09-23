@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
-export const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+export const version = pkg.version;
+export const releaseVersion = pkg.releaseVersion ?? version;
+assert.match(releaseVersion, /^\d+\.\d+\.\d+(?:\.\d+)?$/);
 assert.match(version, /^\d+\.\d+\.\d+$/);
 assert.equal(JSON.parse(readFileSync('package-lock.json', 'utf8')).version, version);
 assert.equal(JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf8')).version, version);
@@ -13,5 +16,6 @@ for (const name of ['clearlist', 'clearlist-core']) {
     .find((s) => s.includes(`name = "${name}"`));
   assert.equal(block?.match(/^version = "([^"]+)"/m)?.[1], version, name);
 }
-if (process.env.GITHUB_REF_TYPE === 'tag') assert.equal(process.env.GITHUB_REF_NAME, `v${version}`);
-console.log(`Release version: ${version}`);
+if (process.env.GITHUB_REF_TYPE === 'tag')
+  assert.equal(process.env.GITHUB_REF_NAME, `v${releaseVersion}`);
+console.log(`Release: ${releaseVersion}; native/updater version: ${version}`);

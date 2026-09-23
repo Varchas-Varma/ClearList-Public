@@ -1,15 +1,12 @@
-## Clearlist 0.1.4
+## Clearlist 0.1.4.1
 
-- Uses one background-relative hover highlight throughout the app, including sidebar lists.
-- Adds Ctrl+click, hover selection controls, and Ctrl+Up/Down/Home/End range selection. The selection modifier is reassignable.
-- Applies keyboard moves, drag moves, deletion, completion, uncompletion, subtask creation, renaming, duplication, and importance changes to selected groups.
-- Adds a scrollable details summary with the first line of every selected task/subtask note and all attached images in order.
-- Adds separate, confirmed purge buttons for completed and incomplete tasks in the current list. Opposite-status descendants are preserved.
-- Exposes completed-section collapse/expand and the new selection and purge hotkeys in Settings. New action hotkeys are unassigned; the selection modifier defaults to Ctrl.
-- Saves group moves and destructive changes atomically. Existing task data, preferences, and update signing identity are preserved.
+- Fixes shortcut recording after clicks that do not transfer keyboard focus, including macOS WKWebView.
+- Adds explicit Cancel recording, Escape/Tab cancellation, and cancellation when the app loses focus.
+- Accepts Command shortcut reassignment on Mac and displays Cmd/Option labels.
+- Uses Mac defaults: Cmd+N/F/Shift+N/D/Enter, Cmd+click and Cmd+Up/Down selection, Cmd+R rename, Cmd+Delete removal, Cmd+Shift+Enter subtask creation, Option+Up/Down first/last task, and Cmd+, for Settings.
+- Migrates unchanged legacy defaults on Mac while preserving custom shortcuts, cleared actions, and bindings that would conflict. Reset hotkeys applies all platform defaults.
+- Preserves standard copy/paste/undo shortcuts, task data, themes, and the updater signing identity. Windows defaults remain unchanged.
 
-From 0.1.3, use Settings → Updates or accept the update notice. Older installations need one manual installation over the existing app. Choose x64 for Intel/AMD Windows, or ARM64 for Windows on ARM, including an ARM Windows virtual machine. Updates verify signatures before installation. Windows Authenticode signing is not configured, so an initial installer may show an unknown-publisher warning.
+Install through Settings → Updates on 0.1.3 or later. Windows downloads include x64 and ARM64 installers. The universal macOS DMG supports Apple Silicon and Intel Macs on macOS 13.3 or later. Drag Clearlist to Applications; the ad-hoc signed app is not Apple-notarized, so an initial manual installation may require System Settings → Privacy & Security → Open Anyway.
 
-## macOS installer
-
-A universal DMG is now available for Apple Silicon and Intel Macs running macOS 13.3 or later. Open the DMG and drag Clearlist to Applications. The app is ad-hoc signed, not Apple-notarized; first launch may require System Settings → Privacy & Security → Open Anyway. Future updates use Settings → Updates with verified update signatures. Existing Windows downloads and data are unchanged. Both platforms are included in future Desktop release builds.
+Public release: 0.1.4.1. Native/updater SemVer: 0.1.5. The previous app may label this update 0.1.5; the installed app displays 0.1.4.1.

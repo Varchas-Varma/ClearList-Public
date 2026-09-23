@@ -5,6 +5,7 @@ import { repository } from '../services/repository';
 import { appStore, useApp } from '../state/app';
 import { Modal } from './Modal';
 import { Confirm } from './Confirm';
+import { isMacOS } from '../settings/shortcuts';
 export function AttachmentTile({ attachment }: { attachment: Attachment }) {
   const [url, setUrl] = useState<string | null>(null),
     [failed, setFailed] = useState(false),
@@ -102,7 +103,7 @@ export function Attachments({ taskId }: { taskId: string }) {
     >
       <h3 id="images-heading">Images</h3>
       <p className="paste-hint">
-        Paste an image here with Ctrl+V.
+        Paste an image here with {isMacOS() ? 'Cmd' : 'Ctrl'}+V.
         <br />
         PNG, JPEG or WebP · up to 15 MiB
       </p>

@@ -92,6 +92,69 @@ async function settings(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('tab', { name: 'Hotkeys' }));
 }
 describe('0.1.2 settings', () => {
+  it('records keys after a click without browser focus and always allows cancellation', async () => {
+    const user = await start();
+    await settings(user);
+    const search = screen.getByRole('searchbox', { name: 'Find a hotkey' });
+    const binding = screen.getByRole('button', { name: 'Shortcut for Jump to Add a task' });
+    search.focus();
+    // Safari/WKWebView does not focus clicked buttons. Exercise the fallback even
+    // when the explicit focus request cannot take effect.
+    const focus = vi.spyOn(binding, 'focus').mockImplementation(() => {});
+    fireEvent.click(binding);
+    expect(search).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'k', ctrlKey: true });
+    expect(binding).toHaveTextContent('Ctrl+K');
+    expect(binding).toHaveAttribute('aria-pressed', 'false');
+    expect(search).toHaveValue('');
+    focus.mockRestore();
+    fireEvent.click(binding);
+    expect(binding).toHaveFocus();
+    fireEvent.keyDown(binding, { key: 'Control', ctrlKey: true });
+    expect(binding).toHaveTextContent('Press keys');
+    fireEvent.keyDown(binding, { key: 'Escape' });
+    expect(binding).toHaveTextContent('Ctrl+K');
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+    fireEvent.click(binding);
+    await user.tab();
+    expect(binding).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(binding);
+    fireEvent(window, new Event('blur'));
+    expect(binding).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(binding);
+    await user.click(screen.getByRole('button', { name: 'Cancel recording' }));
+    expect(binding).toHaveAttribute('aria-pressed', 'false');
+  });
+  it('records Command shortcuts on Mac, persists them, and uses Command for task selection', async () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
+    usePreferences.setState(defaultPreferences());
+    const user = await start();
+    await addTask(user, 'One');
+    await addTask(user, 'Two');
+    await settings(user);
+    const binding = screen.getByRole('button', { name: 'Shortcut for Jump to Add a task' });
+    expect(binding).toHaveTextContent('Cmd+N');
+    fireEvent.click(binding);
+    fireEvent.keyDown(binding, { key: 'Meta', metaKey: true });
+    fireEvent.keyDown(binding, { key: 'k', metaKey: true });
+    expect(binding).toHaveTextContent('Cmd+K');
+    expect(binding).toHaveAttribute('aria-pressed', 'false');
+    expect(readPreferences(localStorage.getItem(PREFERENCES_KEY)).hotkeys.newTask).toBe('Meta+K');
+    const modifier = screen.getByRole('button', {
+      name: 'Shortcut for Hold to extend task selection',
+    });
+    expect(modifier).toHaveTextContent('Cmd');
+    fireEvent.click(modifier);
+    fireEvent.keyDown(modifier, { key: 'Meta', metaKey: true });
+    expect(modifier).toHaveAttribute('aria-pressed', 'false');
+    await user.click(screen.getByRole('button', { name: 'Close dialog' }));
+    row('One').focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'k', metaKey: true });
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Add a task' })).toHaveFocus());
+    row('One').focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown', metaKey: true });
+    expect(appStore.getState().selectedTaskIds).toHaveLength(2);
+  });
   it('reassigns an existing hotkey and persists it without retaining the old binding', async () => {
     const user = await start();
     await addTask(user, 'One');

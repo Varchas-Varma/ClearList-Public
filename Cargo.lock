@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "clearlist"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clearlist-core",
  "serde_json",
@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "clearlist-core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "image",
  "rusqlite",

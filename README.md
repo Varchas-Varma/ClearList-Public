@@ -1,4 +1,4 @@
-# Clearlist 0.1.4
+# Clearlist 0.1.4.1
 
 A small, local Windows and macOS desktop to-do app: lists, tasks, nested subtasks visible in the main list, plain notes, and pasted images. Task data stays local, with no accounts, cloud sync, calendars, reminders, or telemetry. Optional installation of signed updates uses public GitHub Releases. The layout follows familiar list-management conventions with original styling and icons.
 
@@ -6,15 +6,17 @@ A small, local Windows and macOS desktop to-do app: lists, tasks, nested subtask
 
 Download the installer for your computer from [the latest release](https://github.com/Varchas-Varma/ClearList-Public/releases/latest):
 
-- **Intel/AMD (x64):** `Clearlist_0.1.4_x64-setup.exe`
-- **Windows on ARM (ARM64):** `Clearlist_0.1.4_arm64-setup.exe`
-- **macOS (Apple Silicon and Intel, universal):** [Clearlist_0.1.4_universal.dmg](https://github.com/Varchas-Varma/ClearList-Public/releases/download/v0.1.4/Clearlist_0.1.4_universal.dmg)
+- **Intel/AMD (x64):** `Clearlist_0.1.4.1_x64-setup.exe`
+- **Windows on ARM (ARM64):** `Clearlist_0.1.4.1_arm64-setup.exe`
+- **macOS (Apple Silicon and Intel, universal):** [Clearlist_0.1.4.1_universal.dmg](https://github.com/Varchas-Varma/ClearList-Public/releases/download/v0.1.4.1/Clearlist_0.1.4.1_universal.dmg)
 
 Windows 10/11 are supported on these two architectures. Close Clearlist and run the installer over the existing installation. Lists, notes, images, and settings are retained. Version 0.1.2 and earlier need this one final manual installation on each PC to enable future in-app updates. No GitHub account is required.
 
 **Mac installation:** Requires macOS 13.3 or later. Open the DMG, drag **Clearlist** into **Applications**, eject the disk image, then launch it from Applications. The bundle is ad-hoc signed and is not Apple-notarized. On the first launch, macOS may block it; open **System Settings → Privacy & Security → Open Anyway**, then confirm Open. See [Apple’s instructions](https://support.apple.com/102445). Future releases install through **Settings → Updates**. Run the installed copy, not the copy inside the DMG. No Windows virtual machine is required.
 
-Version 0.1.4 adds background-relative hover highlights, Ctrl multi-selection, batch task actions, combined notes/image summaries, and separate completed/incomplete purge buttons. **Settings → Hotkeys** includes the completed-section toggle and all new actions. The selection modifier defaults to **Ctrl**; other new commands are **Unassigned**. Existing 0.1.3 installations can install this release through **Settings → Updates** or the launch update notice. Pending edits are saved before installation; existing lists, notes, images, settings, and the signing key are retained.
+**Version 0.1.4.1** fixes shortcut recording when a clicked button does not receive keyboard focus, accepts Command bindings on macOS, and adds Mac keyboard defaults. Recording can be cancelled with Escape, Tab, the Cancel recording button, or by leaving the app. Unchanged legacy default bindings migrate on Mac; custom and explicitly cleared bindings remain, and conflicting new defaults are skipped. **Reset hotkeys** applies the full defaults for the current OS.
+
+Version 0.1.4 added background-relative hover highlights, Ctrl multi-selection, batch task actions, combined notes/image summaries, and separate completed/incomplete purge buttons. **Settings → Hotkeys** includes the completed-section toggle and all new actions. The selection modifier defaults to **Ctrl on Windows / Cmd on Mac**; other new commands are **Unassigned**. Existing 0.1.3 and later installations can install this release through **Settings → Updates** or the launch update notice. Pending edits are saved before installation; existing lists, notes, images, settings, and the signing key are retained.
 
 Update downloads are cryptographically signed and verified by the app. Windows Authenticode signing is not configured, so the initial installer may show an unknown-publisher warning. The Desktop release workflow builds both Windows architectures and a universal macOS bundle, and publishes after all artifacts and update signatures are ready. macOS updater signatures use the existing application key; they are separate from Apple Developer ID signing/notarization, which is not configured. The desktop host includes the JSON dependency required by the updater configuration.
 
@@ -110,7 +112,7 @@ rustup target add aarch64-apple-darwin x86_64-apple-darwin
 npm run tauri build -- --target universal-apple-darwin --bundles app,dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
 
-The installer appears under `target/universal-apple-darwin/release/bundle/dmg`. App shortcuts retain their documented Ctrl defaults and can be reassigned in Settings, including to Command (shown as Meta). For range selection, choose Shift or Alt/Option if macOS reserves Ctrl+arrow keys. Use the selection squares if Control-click opens the native context menu. Standard Command+C/V text and image paste are supported by the native webview. Compact Mac keyboards can reassign Insert/Delete actions to convenient combinations.
+The installer appears under `target/universal-apple-darwin/release/bundle/dmg`. Mac defaults use Command for app actions and selection, Option+Up/Down for first/last task, Cmd+R to rename, Cmd+Delete to remove tasks, and Cmd+Shift+Enter to add subtasks. Labels display Cmd and Option. Settings accepts Command combinations and Command as the selection modifier. Standard Command+C/V text and image paste remain protected. See the shortcut table below.
 
 ## Development and verification commands
 
@@ -146,6 +148,8 @@ On launch, Clearlist checks the public release feed with a 15-second timeout. An
 
 ### Publishing the next release
 
+The public release label is `package.json.releaseVersion`. This hotfix is **0.1.4.1**, with native/updater SemVer **0.1.5** because Tauri does not accept four numeric components. Tags, download filenames, notes, and the installed app display use the public label. Native package versions and the feed’s `version` use the internal SemVer, which must increase for future updates. Older 0.1.4 installations may display the incoming update as 0.1.5; after installation, Settings displays 0.1.4.1.
+
 1. Keep the generated private signing key in the repository's encrypted Actions secret **TAURI_SIGNING_PRIVATE_KEY**. The matching public key is in `src-tauri/tauri.conf.json`. Retain a secure backup of the original key: changing it breaks updates for existing installations. Never put the private key in source, release assets, or logs.
 2. Bump the versions required by `AGENTS.md`, update this README and `docs/RELEASE_NOTES.md`, and commit the lockfiles. Keep automated commit attribution set to `Clearlist contributors <noreply@clearlist.invalid>`.
 3. Run **Actions → Desktop release → Run workflow** from `main`, or push the matching `vX.Y.Z` tag. Windows runners compile both targets; the reusable macOS job builds a universal app and DMG with locked dependencies.
@@ -171,7 +175,7 @@ The app name is set in `src-tauri/tauri.conf.json`, the sidebar brand, and `inde
 
 ### Multi-selection and cleanup (0.1.4)
 
-Use the selection square shown when hovering or focusing a task, or **Ctrl+click** a task title, to add or remove individual tasks. From a hovered or keyboard-focused task, hold **Ctrl** and use **Up/Down** to extend or shrink a contiguous range of visible tasks; **Ctrl+Home/End** extends to the first/last visible task. Text fields retain their normal editing shortcuts. The selection modifier can be reassigned to Ctrl, Shift, or Alt in Settings, or cleared. **Select all visible** and **Clear selection** buttons appear with the selection count.
+Use the selection square shown when hovering or focusing a task, or **Ctrl+click on Windows / Cmd+click on Mac** a task title, to add or remove individual tasks. From a hovered or keyboard-focused task, hold **Ctrl on Windows / Cmd on Mac** and use **Up/Down** to extend or shrink a contiguous range of visible tasks; **the same modifier + Home/End** extends to the first/last visible task. Text fields retain their normal editing shortcuts. The selection modifier can be reassigned to Ctrl, Shift, or Alt/Option (also Cmd on Mac) in Settings, or cleared. **Select all visible** and **Clear selection** buttons appear with the selection count.
 
 After selecting, release the modifier. Drag any selected task, or press **Enter** and use the existing gap/subtask keyboard controls, to move the group in its current order. Parents carry their descendants only once, even when both are selected. Existing Delete, Space, Insert, F2, duplication, importance, move-to-list, promotion, and move-up/down actions apply to the selected group when invoked from a selected row or the combined details panel. Space completes the selection unless every selected task is already complete, in which case it uncompletes them. **Complete all** and **Uncomplete all** are also explicit buttons. Adding a subtask creates one copy of the entered title under each selected task. Renaming applies the entered title to every selected task. Completion changes only explicitly selected tasks. Moving between active/completed sections preserves each task’s completion status.
 
@@ -179,7 +183,7 @@ The combined details panel lists selected tasks and their descendants in tree or
 
 **Purge completed tasks** and **Purge incomplete tasks** affect only the current list, including nested tasks, after a confirmation showing the count and list name. Only tasks matching the requested completion status are deleted. Opposite-status subtasks, their notes, and their images survive and are promoted to their nearest surviving parent. Other lists are untouched. Ordinary **Delete selection** removes selected branches and their descendants. Group moves, completion, renaming, subtask creation, and deletion commit in one database transaction; a rejected operation rolls back the batch.
 
-The completed-section toggle, both purge actions, select/deselect task, select-all-visible, clear-selection, complete-selection, and uncomplete-selection commands are available in Settings with no assigned shortcut. The selection modifier starts at Ctrl. Existing assignments are retained except Ctrl+Up/Down/Home/End, which are reserved for range selection and become unassigned on upgrade if previously used for another action.
+The completed-section toggle, both purge actions, select/deselect task, select-all-visible, clear-selection, complete-selection, and uncomplete-selection commands are available in Settings with no assigned shortcut. The selection modifier starts at Ctrl on Windows or Cmd on Mac. Existing assignments are retained except Ctrl+Up/Down/Home/End, which are reserved for range selection and become unassigned on upgrade if previously used for another action.
 
 ### Settings and colours (0.1.2)
 
@@ -197,9 +201,9 @@ Click the sidebar's collapse/expand button to switch between the full sidebar an
 
 ### Reassigning hotkeys (0.1.2)
 
-Open **Settings → Hotkeys**, find an action, click its current shortcut or **Unassigned**, and press the desired key combination. **Clear** removes an assignment. **Reset hotkeys** restores the defaults below. Conflicting assignments are rejected and identify the existing action; clear that action first to reuse the combination. Escape cancels recording and Tab leaves it.
+Open **Settings → Hotkeys**, find an action, click its current shortcut or **Unassigned**, and press the desired key combination. **Clear** removes an assignment. **Reset hotkeys** restores the defaults below. Conflicting assignments are rejected and identify the existing action; clear that action first to reuse the combination. Escape cancels recording, Tab leaves it, and Cancel recording provides a mouse exit. Leaving the app also cancels recording. Keystrokes are captured while recording even if the clicked control does not receive focus; valid assignments save immediately.
 
-All 55 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, Windows shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V pastes images.
+All 55 app commands are listed, including navigation, task actions, search, list creation and management, settings, sidebar visibility, notes, and image actions. Actions without a previous default are **Unassigned** until configured. For example, assign `N` to **Jump to Add a task** for a single-key entry shortcut. Single-letter shortcuts do not interrupt typing. Modified app shortcuts such as Ctrl+N still work from text fields; task mutations do not run while typing. Standard text editing/paste, Tab focus movement, operating-system shortcuts, and Escape in dialogs remain available. Image preview/delete targets the focused image, or the first image of the current task; normal Ctrl+V on Windows / Cmd+V on Mac pastes images.
 
 The task footer and task-action menus display your current bindings. Task actions operate on the selection when invoked from a selected task, otherwise on the focused task; list actions operate on the current list. Protected default-list actions remain unavailable. Reassigning an existing shortcut removes its old binding; Escape remains available as a cancel key.
 
@@ -207,27 +211,30 @@ Preferences save locally in the app's WebView storage, separate from the task da
 
 ### Default shortcuts
 
-| Shortcut                      | Action                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| Ctrl+click / selection square | Add or remove a task from the selection                                          |
-| Ctrl+Up / Ctrl+Down           | Extend or shrink the visible task selection                                      |
-| Ctrl+Home / Ctrl+End          | Extend selection to the first / last visible task                                |
-| Up / Down                     | Browse siblings; from task entry, keep the draft and focus the last / first task |
-| Enter on a task               | Pick up the task; arrow keys then visit task rows and insertion gaps             |
-| Enter while moving            | Drop at the highlighted gap, or as a subtask of the highlighted task             |
-| Right / Left                  | Enter subtasks / return to parent level, including while moving                  |
-| Escape                        | Cancel a move/edit, or close details and return to task entry                    |
-| Home / End                    | First / last sibling or drop position                                            |
-| F2                            | Rename focused task or selected group                                            |
-| Delete                        | Confirm removal of focused task / selected branches                              |
-| Space                         | Complete / uncomplete selected tasks                                             |
-| Insert                        | Add a subtask to each selected task                                              |
-| Ctrl+Enter                    | Open task details                                                                |
-| Ctrl+D                        | Duplicate focused task and its subtree                                           |
-| Ctrl+N / Ctrl+Shift+N         | New task / new list                                                              |
-| Ctrl+F                        | Search                                                                           |
-| Tab / Shift+Tab               | Next / previous control                                                          |
-| Enter in text entry           | Add item or save title                                                           |
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Add/remove task from selection | Ctrl+click or selection square | Cmd+click or selection square |
+| Extend/shrink task selection | Ctrl+Up/Down | Cmd+Up/Down |
+| Extend selection to first/last visible task | Ctrl+Home/End | Cmd+Home/End (Fn+Left/Right on compact keyboards) |
+| Browse siblings / move positions | Up/Down | Up/Down |
+| Pick up/drop task | Enter | Enter |
+| Enter subtasks / return to parent | Right/Left | Right/Left |
+| Cancel move/edit / return to task entry | Escape | Escape |
+| First/last sibling or drop position | Home/End | Option+Up/Down |
+| Rename focused task or selection | F2 | Cmd+R |
+| Delete focused task or selection | Delete | Cmd+Delete (the Backspace key) |
+| Complete/uncomplete selection | Space | Space |
+| Add a subtask to selected tasks | Insert | Cmd+Shift+Enter |
+| Open task details | Ctrl+Enter | Cmd+Enter |
+| Duplicate task and subtasks | Ctrl+D | Cmd+D |
+| Jump to Add a task | Ctrl+N | Cmd+N |
+| New list | Ctrl+Shift+N | Cmd+Shift+N |
+| Search | Ctrl+F | Cmd+F |
+| Open settings | Unassigned | Cmd+, |
+| Next/previous control | Tab / Shift+Tab | Tab / Shift+Tab |
+| Add item or save title while typing | Enter | Enter |
+
+Other actions remain unassigned until configured. On upgrade to 0.1.4.1, saved default-valued Windows bindings migrate to the Mac defaults. Custom shortcuts and cleared actions are preserved; if a custom shortcut occupies a new default, the original binding is retained. Use **Reset hotkeys** for the complete platform defaults. Once saved in 0.1.4.1, deliberately reassigned Ctrl bindings remain unchanged on later launches.
 
 ### Saved ordering
 
