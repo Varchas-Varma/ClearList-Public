@@ -18,7 +18,7 @@ jobs:
           const response = await fetch('https://api.github.com/repos/' + process.env.GITHUB_REPOSITORY + '/git/commits', {
             method: 'POST',
             headers: {Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'},
-            body: JSON.stringify({"message":"Add universal macOS installer and desktop update publishing","tree":"d27049940d3d00e79130722ebdd9152b55e38851","parents":["74674e8eac9eb362c819038385126bc5592d1cbe"],"author":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-22T15:50:08-06:00"},"committer":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-22T15:50:08-06:00"}})
+            body: JSON.stringify({"message":"Release 0.1.4.1 with reliable shortcut recording and Mac defaults","tree":"04fbacb5bbd4dbf35f42c15a39e88ee60a893f08","parents":["bbe2e137f0af16c65dd77bc9b5ce0099dd548b41"],"author":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-23T07:46:38-04:00"},"committer":{"name":"Clearlist contributors","email":"noreply@clearlist.invalid","date":"2026-09-23T07:46:38-04:00"}})
           });
           if (!response.ok) throw new Error('Commit creation failed: ' + response.status + ' ' + await response.text());
           console.log('Prepared release commit: ' + (await response.json()).sha);
